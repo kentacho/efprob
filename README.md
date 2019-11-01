@@ -1,0 +1,23 @@
+# EfProb
+
+EfProb is a Python package for probability calculations. For more
+background information on channel-based probability, see the
+forthcoming book:
+
+- Structured Probabilistic Reasoning http://www.cs.ru.nl/B.Jacobs/PAPERS/ProbabilisticReasoning.pdf
+
+## Installation
+
+Clone the repository and in the directory run:
+
+```
+pip install .
+```
+
+Add the option `--user` to install it in your home directory. You
+might need to replace `pip` with `pip3`.
+
+## TODOs
+
+- Examples
+- Testing
