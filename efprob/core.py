@@ -913,10 +913,10 @@ class Predicate(Channel):
         self.sp = self.dom
 
     @classmethod
+    def fromfun(cls, fun, dom):
         """Creates a Predicate from a function dom -> reals that
         represents the matrix / array.
         """
-    def fromfun(cls, fun, dom):
         def f(*args):
             return lambda: fun(*args)
         return super().fromfun(f, dom, Space()).as_pred()
