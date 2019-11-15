@@ -3,8 +3,15 @@ Built in functions
 """
 
 from .helpers import _prod
-from .core import (Space, range_sp, Channel, State, Predicate)
+from .core import (Space, range_sp, Channel, State, Predicate,
+                   uniform_state, idn, discard, proj, truth, point_pred)
 import numpy as np
+import functools
+import math
+import random
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
 
 ##############################################################
 #
@@ -55,17 +62,6 @@ chan_fromklmap = Channel.fromklmap
 chan_fromstates = Channel.fromstates
 
 
-def idn(sp):
-    """ Identity channel sp -> sp on space sp; it does nothing """
-    return Channel(np.eye(_prod(sp.shape)), sp, sp)
-
-
-def discard(sp):
-    """ Discard channel sp -> one_sp; it deletes everything """
-    array = np.ones(sp.shape)
-    return Channel(array, sp, one_sp)
-
-
 def copy2(sp):
     """ binary copy channel on sample space sp """
     size = sp.size()
@@ -95,30 +91,10 @@ def tuple_chan(*chans):
     return c * copy(chans[0].dom, l)
 
 
-def proj(sp, mask):
-    """Projection channel according to the mask; the mask can be either a
-       proper mask (a list of 0 and 1) or a number i; the latter case
-       is interpreted as the i-th projection mask with a 1 only at
-       position i. This i must be in the range 1,...,n, where n is the
-       length of the currrent space (unlike for list access, which
-       starts at 0).
-
-    """
-    if len(sp) == 0:
-        raise ValueError('Projection works on non-trivial space') 
-    if not isinstance(mask, list):
-        i = mask
-        mask = [0] * len(sp)
-        mask[i-1] = 1
-    if len(sp) != len(mask):
-        raise ValueError('Length mismatch in projection channel')
-    chans = [idn(Space(sp[i])) if mask[i] else discard(Space(sp[i])) 
-             for i in range(len(mask))]
-    return functools.reduce(lambda x,y: x @ y, chans)
-
-
 def proj1(sp1, sp2):
-    """ shorthand for first projection sp1 @ sp2 -> sp1"""
+    """ shorthand for first projection sp1 @ sp2 -> sp1,
+    using the projection function proj defined in core 
+    """
     return proj(sp1 @ sp2, 1)
 
 
@@ -138,13 +114,14 @@ def swap(sp1, sp2):
 
 def uniform_chan(dom, cod):
     """ Channel dom -> cod which consists of uniform states """
-    chan_fromklmap(lambda x: uniform_state(cod), dom, cod)
+    return chan_fromklmap(lambda x: uniform_state(cod), dom, cod)
 
 
 def random_chan(dom, cod):
     """ Random channel via disintegration of random state on the product """
-    s = random_state(dom @ cod)
-    return s[ [0,1] : [1,0] ]
+    return chan_fromklmap(lambda *x: random_state(cod), dom, cod)
+#s = random_state(dom @ cod)
+#    return s[ [0,1] : [1,0] ]
 
 
 def convex_sum(prob_item_list):
@@ -159,6 +136,18 @@ def convex_sum(prob_item_list):
     This function be used for states and channels
     """
     return functools.reduce(operator.add, (r * s for r, s in prob_item_list))
+
+
+def cocopy2(sp):
+    """ binary cocopy (multiset) channel sp @ sp -> sp """
+    size = sp.size()
+    array = np.zeros((size, size, size))
+    np.einsum('iii->i', array)[:] = 1.0
+    return Channel(array, sp @ sp, sp)
+
+def cap(sp):
+    """ Cap multiset """
+    return discard(sp) * cocopy2(sp)
 
 
 
@@ -187,14 +176,6 @@ def point_state(point, sp):
         point = (point,)
     array = np.zeros(sp.shape)
     array[sp.get_index(*point)] = 1
-    return State(array, sp)
-
-
-def uniform_state(sp):
-    """ uniform state on sample space sp """
-    size = sp.size()
-    array = np.zeros(size)
-    array[:] = 1.0 / size
     return State(array, sp)
 
 
@@ -242,6 +223,163 @@ def tvdist(s, t):
     return 0.5 * sum(abs(np.ndarray.flatten(s.array) \
                          - np.ndarray.flatten(t.array)))
 
+
+def Mval(self, data):
+    """ Multiple-state (M) validity of data, where data is a multiset of
+        predicates. The formula is:
+    
+        Product over p in data, of (self >= p)^(multiplicity of p)
+        """
+    vals = [ self.expectation(*a) ** data(*a) for a in data.sp.iter_all() ]
+    val = _prod(vals)
+    return val
+
+
+def Mval_point(state, data):
+    """ Multiple-state (M) validity, where data is a multiset of
+        points, to be used as point predicates"""
+    vals = [ state(*a) ** data(*a) for a in data.sp.iter_all() ]
+    val = _prod(vals)
+    return val
+
+
+def log_Mval_point(state, data):
+    """ multiple-state (M) validity, where data is a multiset of
+        points, to be used as point predicates"""
+    vals = [ math.log(state(*a) ** data(*a)) for a in data.sp.iter_all() ]
+    val = functools.reduce(lambda p1, p2: p1 + p2, vals, 0)
+    return val
+
+
+def Cval(state, data):
+    """ Copied-state (C) validity of data, where data is a multiset of
+        predicates"""
+    def expon(a, b) : return a ** b
+    preds = [ expon(*a, data(*a)) for a in data.sp.iter_all() ]
+    pred = functools.reduce(lambda p1, p2: p1 & p2, 
+                            preds, 
+                            truth(state.sp))
+    return state >= pred
+
+
+def Cval_point(state, data):
+    """ copied-state (C) validity of data, where data is a multiset of
+        points, to be used as point predicates"""
+    preds = [ point_pred(*a, state.sp) ** data(*a) for a in data.sp.iter_all() ]
+    pred = functools.reduce(lambda p1, p2: p1 & p2, 
+                            preds, 
+                            truth(state.sp))
+    return state >= pred
+
+
+def Mval_chan(state, chan, data):
+    """multiple-state (M) validity, along a channel, where data is a
+        pulled back along the channel """
+    # for each element, state.sp.get(*a), of the codomain
+    vals = [ (chan >> state).expectation(*a) ** data(*a)
+             for a in data.sp.iter_all() ]
+    val = functools.reduce(lambda p1, p2: p1 * p2, vals, 1)
+    return val
+
+def Mval_point_chan(state, chan, data):
+    """multiple-state (M) validity, along a channel, where point-data is a
+        pulled back along the channel """
+    # for each element, state.sp.get(*a), of the codomain
+    vals = [ (chan >> state)(*a) ** data(*a) for a in data.sp.iter_all() ]
+    val = functools.reduce(lambda p1, p2: p1 * p2, vals, 1)
+    return val
+
+
+def Cval_chan(state, chan, data):
+    """ copied-state (C) validity of data, where data is a multiset of
+        predicates"""
+    def lshift(a, b) : return a << b
+    preds = [ lshift(chan, *a) ** data(*a) for a in data.sp.iter_all() ]
+    pred = functools.reduce(lambda p1, p2: p1 & p2, 
+                            preds, 
+                            truth(state.sp))
+    return state >= pred
+
+
+def Cval_point_chan(state, chan, data):
+    """ copied-state (C) validity of data, where data is a multiset of
+        predicates"""
+    preds = [ (chan << point_pred(*a, chan.cod)) ** data(*a)
+              for a in data.sp.iter_all() ]
+    pred = functools.reduce(lambda p1, p2: p1 & p2, 
+                            preds, 
+                            truth(state.sp))
+    return state >= pred
+
+
+def Mcond(state, data):
+    """ Multiple-state conditioning with data, as mulitset of predicates """
+    def cond(a,b) : return a / b
+    freqs = [ data(*data.sp.get(*a))
+              for a in np.ndindex(*data.sp.shape) ]
+    freq = sum(freqs)
+    stats = [ (data(*a) / freq) * cond(state, *a)
+              for a in data.sp.iter_all() ]
+    stat = functools.reduce(lambda s1, s2: s1 + s2, stats)
+    return stat
+
+
+def Mcond_chan(state, chan, data):
+    """ Multiple-state conditioning along a channel with data, 
+        as mulitset of predicates """
+    def lshift(a,b) : return a << b
+    freqs = [ data(*data.sp.get(*a))
+              for a in np.ndindex(*data.sp.shape) ]
+    freq = sum(freqs)
+    stats = [ (data(*a) / freq) * (state / lshift(chan, *a))
+              for a in data.sp.iter_all() ]
+    stat = functools.reduce(lambda s1, s2: s1 + s2, stats)
+    return stat
+
+
+def Mcond_point_chan(state, chan, data):
+    """ Multiple-state conditioning with data, as mulitset of predicates """
+    freqs = [ data(*a) for a in data.sp.iter_all() ]
+    freq = sum(freqs)
+    stats = [ (data(*a) / freq) * (state / (chan << point_pred(a, chan.cod)))
+              for a in data.sp.iter_all() ]
+    stat = functools.reduce(lambda s1, s2: s1 + s2, stats)
+    return stat
+
+
+def Ccond(state, data):
+    """ Copied-state conditioning with data, as mulitset of predicates """
+    def expon(a, b) : return a ** b
+    preds = [ expon(*a, data(*a)) for a in data.sp.iter_all() ]
+    pred = functools.reduce(lambda p1, p2: p1 & p2, 
+                            preds, 
+                            truth(state.sp))
+    return state / pred
+
+
+def Ccond_chan(state, chan, data):
+    """ Copied-state conditioning along a channel with data, 
+        as mulitset of predicates """
+    def lshift(a,b) : return a << b
+    preds = [ lshift(chan, *a) ** data(*a) for a in data.sp.iter_all() ]
+    pred = functools.reduce(lambda p1, p2: p1 & p2, 
+                            preds, 
+                            truth(state.sp))
+    return state / pred
+
+
+def Ccond_point_chan(state, chan, data):
+    """ Copied-state conditioning along a channel with data, 
+        as mulitset of points predicates """
+    def lshift(a,b) : return a << b
+    preds = [ (chan << point_pred(a, chan.cod)) ** data(*a)
+              for a in data.sp.iter_all() ]
+    pred = functools.reduce(lambda p1, p2: p1 & p2, 
+                            preds, 
+                            truth(state.sp))
+    return state / pred
+
+
 def binomial(N, p):
     """ Binomial distribution on {0,1,2,...,N} with probability p in [0,1] """
     Nfac = math.factorial(N)
@@ -250,7 +388,6 @@ def binomial(N, p):
     return State([binom_coeff(k) * (p ** k) * ((1-p) ** (N-k)) 
                   for k in range(N+1)],
                  range_sp(N+1))
-
 
 
 def poisson(lam, ub):
@@ -314,26 +451,14 @@ def discretized_exponential(lamb, up_bound, steps):
 #
 pred_fromfun = Predicate.fromfun
 
-def point_pred(point, sp):
-    """ Singleton / Dirac predicate for the element called point the 
-    sample space sp 
-    """
-    if not isinstance(point, tuple):
-        point = (point,)
-    array = np.zeros(sp.shape)
-    array[sp.get_index(*point)] = 1
-    return Predicate(array, sp)
-
 #
-# Point predicates for the two-element Boolean sample space
+# Point predicates for the two-element Boolean sample space,
+# using point_pred function defined in core.
 #
 yes_pred = point_pred(True, bool_sp)
 no_pred = point_pred(False, bool_sp)
 
-def truth(sp):
-    """ Predicate that is always 1 on sample space sp """
-    array = np.ones(sp.shape)
-    return Predicate(array, sp)
+# truth predicate is already defined in core
 
 def falsity(sp):
     """ Predicate that is always 0 on sample space sp """
