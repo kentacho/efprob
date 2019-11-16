@@ -1,17 +1,22 @@
-"""
-Test functions based on illustrations and exercises from 
+"""Test functions based on illustrations and exercises from 
 the book (in progress):
 
 Bart Jacobs, Structured Probabilistic Reasoning
+
 Draft available from:
 
 http://www.cs.ru.nl/B.Jacobs/PAPERS/ProbabilisticReasoning.pdf
+
+Instruction: (install and) run pytest on this file.
+
+One can also copy code fragements from this file for own experiments
+and variations.
 
 """
 
 from efprob import *
 from builtins import *
-
+from hmm import *
 
 
 ##############################################################
@@ -390,7 +395,7 @@ def test_asia_visit():
 
 def test_coin_dice_variance():
     s = flip(0.3)
-    rv = Predicate([100, -50], bool_sp)
+    rv = Predicate([100, -50], s.sp)
     assert (s >= rv) == -5
     assert s.variance(rv) == 4725
     assert dice.variance() == 70/24 
@@ -409,7 +414,7 @@ def test_list_covariance():
     assert np.isclose(uniform_state(F).correlation(a,b), 0.65737)
 
 
-def test_joint_var_cor():
+def test_joint_variance_covariance():
     X = Space("X", [1,2])
     Y = Space("Y", [1,2,3])
     t = State([1/4, 1/4, 0, 0, 1/4, 1/4], X @ Y)
@@ -424,6 +429,308 @@ def test_joint_var_cor():
 ##############################################################
 #
 # Chapter 3. Directed Graphical Models
+#
+##############################################################
+
+def test_wheather_hmm():
+    W = Space("Weather", ['C', 'S', 'R'])
+    A = Space("Activities", ['I', 'O'])
+    t = chan_fromstates([State([0.5, 0.2, 0.3], W), 
+                         State([0.15, 0.8, 0.05], W), 
+                         State([0.2, 0.2, 0.6], W)], W)
+    e = chan_fromstates([flip(0.5,A), flip(0.2,A), flip(0.9,A)], W)
+    s = point_state('C', W)
+    h = Hmm(s, t, e)
+    #
+    # Stationary state
+    #
+    ss = State([0.25, 0.5, 0.25],W)
+    assert (t >> ss) == ss
+    #
+    # Validity of sequence of observations, in two ways
+    #
+    assert ((((idn(A @ A) @ tuple_chan(e,t)) \
+              * (idn(A) @ tuple_chan(e,t)) \
+              * tuple_chan(e,t)) >> s).MM(1,1,1,0) \
+            >= (point_pred('O',A) @ point_pred('I',A) @ point_pred('I',A))) \
+            == 0.1674
+    assert (s >= ((e << point_pred('O',A)) & \
+                  (t << ((e << point_pred('I',A)) & \
+                         (t << (e << point_pred('I',A))))))) == 0.1674
+    assert h.forward_of_points(['O', 'I', 'I']) == 0.1674
+    assert h.backward_of_points(['O', 'I', 'I']) == 0.1674
+    assert np.isclose(h.validity_of_points(['O', 'I', 'I']), 0.1674)
+    #
+    # Filtering with observations
+    #
+    s2 = t >> (s / (e << point_pred('O', A)))
+    s3 = t >> (s2 / (e << point_pred('I', A)))
+    s4 = t >> (s3 / (e << point_pred('I', A)))
+    assert s4 == State([1867/6696, 347/1395, 15817/33480], W)
+    assert h.filter_of_points(['O', 'I', 'I']) \
+        == State([1867/6696, 347/1395, 15817/33480], W)
+
+
+def test_hallway():
+    X = Space("Cells", [1,2,3,4,5])
+    Y = Space("Walls", [2,3])
+    s = point_state(3,X)
+    t = chan_fromstates([State([3/4,1/4,0,0,0],X),
+                         State([1/4,1/2,1/4,0,0],X),
+                         State([0,1/4,1/2,1/4,0],X),
+                         State([0,0,1/4,1/2,1/4],X),
+                         State([0,0,0,1/4,3/4],X)], X)
+    e = chan_fromstates([State([0,1],Y),
+                         State([1,0],Y),
+                         State([1,0],Y),
+                         State([1,0],Y),
+                         State([0,1],Y)], X)
+    h = Hmm(s, t, e)
+    obs = [2,2,3,2,3,3] 
+    #
+    # Validity computation
+    #
+    assert (h >= obs) == 3/512
+    q5 = e << point_pred(3,Y)
+    q4 = (e << point_pred(3,Y)) & (t << q5)
+    q3 = (e << point_pred(2,Y)) & (t << q4)
+    q2 = (e << point_pred(3,Y)) & (t << q3)
+    q1 = (e << point_pred(2,Y)) & (t << q2)
+    q0 = (e << point_pred(2,Y)) & (t << q1)
+    assert (s >= q0) == 3/512
+    #
+    # Filtering computation
+    #
+    s2 = t >> (s / (e << point_pred(2,Y)))
+    assert s2 == State([0, 1/4, 1/2, 1/4, 0], X)
+    s3 = t >> (s2 / (e << point_pred(2,Y)))
+    assert s3 == State([1/16, 1/4, 3/8, 1/4, 1/16], X)
+    s4 = t >> (s3 / (e << point_pred(3,Y)))
+    assert s4 == State([3/8, 1/8, 0, 1/8, 3/8], X)
+    s5 = t >> (s4 / (e << point_pred(2,Y)))
+    assert s5 == State([1/8, 1/4, 1/4, 1/4, 1/8], X)
+    s6 = t >> (s5 / (e << point_pred(3,Y)))
+    assert s6 == State([3/8, 1/8, 0, 1/8, 3/8], X)
+    s7 = t >> (s6 / (e << point_pred(3,Y)))
+    assert s7 == State([3/8, 1/8, 0, 1/8, 3/8], X)
+    assert h.filter_of_points([2, 2, 3, 2, 3, 3]) \
+        == State([3/8, 1/8, 0, 1/8, 3/8], X)
+    #
+    # Most likeli sequence
+    #
+    assert h.viterbi_of_points(obs) == [3, 2, 1, 2, 1, 1]
+
+
+def test_wheather_play():
+    Outlook = Space("Outlook", ['s', 'o', 'r'])
+    Temp = Space("Temperature", ['h', 'm', 'c'])
+    Humidity = Space("Humidity", ['h', 'n'])
+    Windy = Space("Windiness", ['t', 'f'])
+    Play = Space("Playing", ['y', 'n'])
+    # joint domain
+    S = Outlook @ Temp @ Humidity @ Windy @ Play
+    # 
+    # Empirical distribution
+    #
+    table = 1/14  *  point_state(('s', 'h', 'h', 'f', 'n'), S) \
+            + 1/14 * point_state(('s', 'h', 'h', 't', 'n'), S) \
+            + 1/14 * point_state(('o', 'h', 'h', 'f', 'y'), S) \
+            + 1/14 * point_state(('r', 'm', 'h', 'f', 'y'), S) \
+            + 1/14 * point_state(('r', 'c', 'n', 'f', 'y'), S) \
+            + 1/14 * point_state(('r', 'c', 'n', 't', 'n'), S) \
+            + 1/14 * point_state(('o', 'c', 'n', 't', 'y'), S) \
+            + 1/14 * point_state(('s', 'm', 'h', 'f', 'n'), S) \
+            + 1/14 * point_state(('s', 'c', 'n', 'f', 'y'), S) \
+            + 1/14 * point_state(('r', 'm', 'n', 'f', 'y'), S) \
+            + 1/14 * point_state(('s', 'm', 'n', 't', 'y'), S) \
+            + 1/14 * point_state(('o', 'm', 'h', 't', 'y'), S) \
+            + 1/14 * point_state(('o', 'h', 'n', 'f', 'y'), S) \
+            + 1/14 * point_state(('r', 'm', 'h', 't', 'n'), S) 
+    #
+    # Play state via marginalisation
+    #
+    prior_play = table.MM(0,0,0,0,1)
+    assert prior_play == State([9/14, 5/14], Play)
+    #
+    # Channels via disintegration
+    #
+    cO = table[[1,0,0,0,0] : [0,0,0,0,1]]
+    cT = table[[0,1,0,0,0] : [0,0,0,0,1]]
+    cH = table[[0,0,1,0,0] : [0,0,0,0,1]]
+    cW = table[[0,0,0,1,0] : [0,0,0,0,1]]
+    #
+    # Outlook channel
+    #
+    assert cO('y') == State([2/9, 4/9, 3/9], Outlook)
+    assert cO('n') == State([3/5, 0, 2/5], Outlook)
+    #
+    # Temperature channel
+    #
+    assert cT('y') == State([2/9, 4/9, 3/9], Temp)
+    assert cT('n') == State([2/5, 2/5, 1/5], Temp)
+    #
+    # Humidity channel
+    #
+    assert cH('y') == State([1/3, 2/3], Humidity)
+    assert cH('n') == State([4/5, 1/5], Humidity)
+    #
+    # Windy channel
+    #
+    assert cW('y') == State([1/3, 2/3], Windy)
+    assert cW('n') == State([3/5, 2/5], Windy)
+    c = tuple_chan(cO, cT, cH, cW)
+    #
+    # Pulled-back point predicate
+    #
+    assert (c << point_pred(('s', 'c', 'h', 't'), c.cod)) \
+        == Predicate([2/243, 36/625], Play)
+    assert np.isclose(prior_play >= c << point_pred(('s', 'c', 'h', 't'),c.cod),
+                      4277 / 165375)
+    assert (prior_play / (c << point_pred(('s', 'c', 'h', 't'), c.cod))) \
+        == State([125/611, 486/611], Play)
+    assert c.dagger(prior_play)('s', 'c', 'h', 't') \
+        == State([125/611, 486/611], Play)
+
+
+def test_factorisation():
+    A = Space(None, ['a', '~a'])
+    B = Space(None, ['b', '~b'])
+    C = Space(None, ['c', '~c'])
+    D = Space(None, ['d', '~d'])
+    joint = State([0.04, 0.18, 0.06, 0.02,
+                   0.04, 0.18, 0.06, 0.02,
+                   0.024, 0.018, 0.036, 0.002,
+                   0.096, 0.072, 0.144, 0.008], A @ C @ D @ B)
+    s = joint.MM(1,0,0,1)
+    assert s == State([0.2, 0.4, 0.3, 0.1], A @ B)
+    f = joint[ [0,1,0,0] : [1,0,0,0] ]
+    assert f('a') == State([0.5,0.5],C)
+    assert f('~a') == State([0.2,0.8],C)
+    g = joint[ [0,0,1,0] : [0,0,0,1] ]
+    assert g('b') == State([0.4,0.6],D)
+    assert g('~b') == State([0.9,0.1],D)
+    assert joint == (idn(A) @ f @ g @ idn(B)) >> ((copy(A) @ copy(B)) >> s)
+
+
+def test_barbers_burglary_alarm():
+    B = Space("Burglary", ['b', '~b'])
+    E = Space("Earthquake", ['e', '~e'])
+    A = Space("Alarm", ['a', '~a'])
+    wB = flip(0.01, B)
+    wE = flip(0.000001, E)
+    alarm = chan_fromstates([flip(0.9999,A), 
+                             flip(0.99,A), 
+                             flip(0.99,A), 
+                             flip(0.0001,A)], B @ E)
+    p = Predicate([0.7,0.3],A)
+    s = State([0.7,0.3],A)
+    #
+    # Burglary probability with Pearl's rule
+    #
+    assert ((wB @ wE) / (alarm << p)).MM(1,0) == State([0.0228947, 0.9771], B)
+    #
+    # Burglary probability with Jeffrey's rule
+    #
+    assert (alarm.dagger(wB @ wE) >> s).MM(1,0) == State([0.69303, 0.306968], B)
+    #
+    # Point evidence gives equal outcome
+    # 
+    assert ((wB @ wE) / (alarm << point_pred('a',A))).MM(1,0) \
+        == (alarm.dagger(wB @ wE) >> point_state('a',A)).MM(1,0)
+
+
+def test_compentence_experience():
+    C = Space("Competence", ['c', '~c'])
+    E = Space("Experience", ['e', '~e'])
+    w = State([4/10, 1/10, 1/10, 4/10], C @ E)
+    #
+    # A priori competence is uniform
+    #
+    assert w.MM(1,0) == State([1/2,1/2], C)
+    #
+    # Observing experience increases competence
+    #
+    assert (w / (proj2(C,E) << point_pred('e',E))).MM(1,0) \
+        == State([4/5,1/5], C)
+    #
+    # Incompetence surprise
+    #
+    r = State([1/8,7/8], C)
+    w1 = proj1(C,E).dagger(w) >> r
+    assert w1 == State([1/10, 1/40, 7/40, 7/10], C @ E)
+    #
+    # Experience after surprise
+    #
+    assert (w1 / (proj2(C,E) << point_pred('e',E))).MM(1,0) \
+        == State([4/11,7/11], C)
+
+
+def test_whitworth_race():
+    R = Space("Contenders", ['A', 'B', 'C'])
+    T = range_sp(2)
+    w = State([2/11, 4/11, 5/11], R)
+    #
+    # (Deterministic) channel R --> T
+    # 
+    f = chan_fromstates([point_state(1,T), 
+                         point_state(0,T), 
+                         point_state(0,T)], R)
+    w1 = f.dagger(w) >> State([1/2,1/2],T)
+    assert w1 == State([1/2, 2/9, 5/18], R)
+
+
+def test_pearl_burglary_alarm():
+    A = Space("A", ['a','~a'])
+    B = Space("B", ['B','~b'])
+    w = State([1/200, 7/500, 1/1000, 98/100], A @ B)
+    p = Predicate([0.8,0.2],A)
+    assert (w / (p @ truth(B))).MM(0,1) == State([21/1057, 1036/1057], B)
+    c = w[ [1,0] : [0,1] ]
+    d = c.dagger(w.MM(0,1))
+    assert (d >> State([4/5,1/5],A)) == State([19639/93195, 73556/93195], B)
+
+
+def test_jeffrey_colors():
+    C = Space("Colours", ['g', 'b', 'v'])
+    S = Space("Sold", ['s', '~s'])
+    w = State([3/25, 9/50, 3/25, 9/50, 8/25, 2/25], C @ S)
+    v = State([0.7, 0.25, 0.05], C)
+    p = v.as_pred()
+    #
+    # Pearl's update, in three ways
+    #
+    assert (w / (p @ truth(S))).MM(0,1) == State([26/61, 35/61], S)
+    #
+    # c : C --> S
+    # d : S --> v
+    #
+    c = w[ [0,1] : [1,0] ]
+    d = w[ [1,0] : [0,1] ]
+    assert (w.MM(0,1) / (d << p)) == State([26/61, 35/61], S)
+    assert (c >> (w.MM(1,0) / p)) == State([26/61, 35/61], S)
+    #
+    # Jeffrey's adaptation, in two ways
+    #
+    assert (d.dagger(w.MM(0,1)) >> v) == State([21/50, 29/50], S)
+    assert (c >> v) == State([21/50, 29/50], S)
+    assert d.dagger(w.MM(0,1)) == c
+    assert tuple_chan(idn(C),c) >> v \
+        == State([14/50, 21/50, 1/10, 3/20, 1/25, 1/100], C @ S)
+
+
+
+
+
+
+
+
+
+
+
+
+##############################################################
+#
+# Chapter 4. 
 #
 ##############################################################
 
