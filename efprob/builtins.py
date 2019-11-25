@@ -312,8 +312,8 @@ def Cval_point_chan(state, chan, data):
     return state >= pred
 
 
-def Mcond(state, data):
-    """ Multiple-state conditioning with data, as mulitset of predicates """
+def Mlrn(state, data):
+    """ Multiple-state learning with data, as mulitset of predicates """
     def cond(a,b) : return a / b
     freqs = [ data(*data.sp.get(*a))
               for a in np.ndindex(*data.sp.shape) ]
@@ -324,8 +324,8 @@ def Mcond(state, data):
     return stat
 
 
-def Mcond_chan(state, chan, data):
-    """ Multiple-state conditioning along a channel with data, 
+def Mlrn_chan(state, chan, data):
+    """ Multiple-state learning along a channel with data, 
         as mulitset of predicates """
     def lshift(a,b) : return a << b
     freqs = [ data(*data.sp.get(*a))
@@ -337,7 +337,7 @@ def Mcond_chan(state, chan, data):
     return stat
 
 
-def Mcond_point_chan(state, chan, data):
+def Mlrn_point_chan(state, chan, data):
     """ Multiple-state conditioning with data, as mulitset of predicates """
     freqs = [ data(*a) for a in data.sp.iter_all() ]
     freq = sum(freqs)
@@ -347,8 +347,8 @@ def Mcond_point_chan(state, chan, data):
     return stat
 
 
-def Ccond(state, data):
-    """ Copied-state conditioning with data, as mulitset of predicates """
+def Clrn(state, data):
+    """ Copied-state learning with data, as mulitset of predicates """
     def expon(a, b) : return a ** b
     preds = [ expon(*a, data(*a)) for a in data.sp.iter_all() ]
     pred = functools.reduce(lambda p1, p2: p1 & p2, 
@@ -357,8 +357,8 @@ def Ccond(state, data):
     return state / pred
 
 
-def Ccond_chan(state, chan, data):
-    """ Copied-state conditioning along a channel with data, 
+def Clrn_chan(state, chan, data):
+    """ Copied-state learning along a channel with data, 
         as mulitset of predicates """
     def lshift(a,b) : return a << b
     preds = [ lshift(chan, *a) ** data(*a) for a in data.sp.iter_all() ]
@@ -368,7 +368,7 @@ def Ccond_chan(state, chan, data):
     return state / pred
 
 
-def Ccond_point_chan(state, chan, data):
+def Clrn_point_chan(state, chan, data):
     """ Copied-state conditioning along a channel with data, 
         as mulitset of points predicates """
     def lshift(a,b) : return a << b

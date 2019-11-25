@@ -16,7 +16,7 @@ from .helpers import (_prod, _multinomial_real)
 from .helpers import *
 
 
-float_format_spec = ".4g"
+float_format_spec = ".6g"
 
 class NormalizationError(Exception):
     """Raised when normalization fails"""
