@@ -27,25 +27,24 @@ bool_sp = Space("2", [True, False])
 #
 # Empty sample space; it can also be obtained as range_sp(0)
 #
-init_sp = Space(None,[])
+init_sp = Space(None, [])
 
 #
 # Singleton sample space; it can also be obtained as range_sp(1).
-# It works as unit for the cartesian product (written as @) of 
+# It works as unit for the cartesian product (written as @) of
 # sample spaces.
 #
 one_sp = Space()
 
 #
-# Sample space for a dice 
+# Sample space for a dice
 #
-pips_sp = Space("pips", [1,2,3,4,5,6])
+pips_sp = Space("pips", [1, 2, 3, 4, 5, 6])
 
 #
 # Sample space for a coin
 #
 coin_sp = Space("coin", ['H', 'T'])
-
 
 
 ##############################################################
@@ -75,7 +74,7 @@ def copy(sp, n=2):
     if n == 1:
         return idn(sp)
     if n % 2 == 0:
-        if n==2:
+        if n == 2:
             return copy2(sp)
         return (copy(sp, n/2) @ copy(sp, n/2)) * copy2(sp)
     return (idn(sp) @ copy(sp, n-1)) * copy2(sp)
@@ -87,7 +86,7 @@ def tuple_chan(*chans):
     l = len(chans)
     if l < 2:
         raise ValueError('Tupling requires at least two channels')
-    c = functools.reduce(lambda x,y: x @ y, chans)
+    c = functools.reduce(lambda x, y: x @ y, chans)
     return c * copy(chans[0].dom, l)
 
 
@@ -130,7 +129,7 @@ def convex_sum(prob_item_list):
     r1 * a1 + ... + rn * an 
 
     for input list of the form 
-    
+
     [ (r1, an), ..., (rn, an) ] 
 
     This function be used for states and channels
@@ -145,10 +144,10 @@ def cocopy2(sp):
     np.einsum('iii->i', array)[:] = 1.0
     return Channel(array, sp @ sp, sp)
 
+
 def cap(sp):
     """ Cap multiset """
     return discard(sp) * cocopy2(sp)
-
 
 
 ##############################################################
@@ -156,7 +155,6 @@ def cap(sp):
 # Built in functions for states (distributions / multisets)
 #
 ##############################################################
-
 #
 # Abbreviations
 #
@@ -191,6 +189,7 @@ def random_state(sp):
 #
 dice = uniform_state(pips_sp)
 
+
 def flip(r, sp=None):
     """ coin with bias r, from the unit interval [0,1], by default on the
     boolean space with elements True, False """
@@ -198,6 +197,7 @@ def flip(r, sp=None):
         return State([r, 1-r], sp)
     else:
         return State([r, 1-r], bool_sp)
+
 
 def coin(r):
     return flip(r, coin_sp)
@@ -220,17 +220,17 @@ def tvdist(s, t):
     """ Total variation distance between discrete states """
     if s.dom != t.dom:
         raise Exception('Distance requires equal spaces')
-    return 0.5 * sum(abs(np.ndarray.flatten(s.array) \
+    return 0.5 * sum(abs(np.ndarray.flatten(s.array)
                          - np.ndarray.flatten(t.array)))
 
 
 def Mval(self, data):
     """ Multiple-state (M) validity of data, where data is a multiset of
         predicates. The formula is:
-    
+
         Product over p in data, of (self >= p)^(multiplicity of p)
         """
-    vals = [ self.expectation(*a) ** data(*a) for a in data.sp.iter_all() ]
+    vals = [self.expectation(*a) ** data(*a) for a in data.sp.iter_all()]
     val = _prod(vals)
     return val
 
@@ -238,7 +238,7 @@ def Mval(self, data):
 def Mval_point(state, data):
     """ Multiple-state (M) validity, where data is a multiset of
         points, to be used as point predicates"""
-    vals = [ state(*a) ** data(*a) for a in data.sp.iter_all() ]
+    vals = [state(*a) ** data(*a) for a in data.sp.iter_all()]
     val = _prod(vals)
     return val
 
@@ -246,7 +246,7 @@ def Mval_point(state, data):
 def log_Mval_point(state, data):
     """ multiple-state (M) validity, where data is a multiset of
         points, to be used as point predicates"""
-    vals = [ math.log(state(*a) ** data(*a)) for a in data.sp.iter_all() ]
+    vals = [math.log(state(*a) ** data(*a)) for a in data.sp.iter_all()]
     val = functools.reduce(lambda p1, p2: p1 + p2, vals, 0)
     return val
 
@@ -254,10 +254,10 @@ def log_Mval_point(state, data):
 def Cval(state, data):
     """ Copied-state (C) validity of data, where data is a multiset of
         predicates"""
-    def expon(a, b) : return a ** b
-    preds = [ expon(*a, data(*a)) for a in data.sp.iter_all() ]
-    pred = functools.reduce(lambda p1, p2: p1 & p2, 
-                            preds, 
+    def expon(a, b): return a ** b
+    preds = [expon(*a, data(*a)) for a in data.sp.iter_all()]
+    pred = functools.reduce(lambda p1, p2: p1 & p2,
+                            preds,
                             truth(state.sp))
     return state >= pred
 
@@ -265,9 +265,9 @@ def Cval(state, data):
 def Cval_point(state, data):
     """ copied-state (C) validity of data, where data is a multiset of
         points, to be used as point predicates"""
-    preds = [ point_pred(*a, state.sp) ** data(*a) for a in data.sp.iter_all() ]
-    pred = functools.reduce(lambda p1, p2: p1 & p2, 
-                            preds, 
+    preds = [point_pred(*a, state.sp) ** data(*a) for a in data.sp.iter_all()]
+    pred = functools.reduce(lambda p1, p2: p1 & p2,
+                            preds,
                             truth(state.sp))
     return state >= pred
 
@@ -276,16 +276,17 @@ def Mval_chan(state, chan, data):
     """multiple-state (M) validity, along a channel, where data is a
         pulled back along the channel """
     # for each element, state.sp.get(*a), of the codomain
-    vals = [ (chan >> state).expectation(*a) ** data(*a)
-             for a in data.sp.iter_all() ]
+    vals = [(chan >> state).expectation(*a) ** data(*a)
+            for a in data.sp.iter_all()]
     val = functools.reduce(lambda p1, p2: p1 * p2, vals, 1)
     return val
+
 
 def Mval_point_chan(state, chan, data):
     """multiple-state (M) validity, along a channel, where point-data is a
         pulled back along the channel """
     # for each element, state.sp.get(*a), of the codomain
-    vals = [ (chan >> state)(*a) ** data(*a) for a in data.sp.iter_all() ]
+    vals = [(chan >> state)(*a) ** data(*a) for a in data.sp.iter_all()]
     val = functools.reduce(lambda p1, p2: p1 * p2, vals, 1)
     return val
 
@@ -293,10 +294,10 @@ def Mval_point_chan(state, chan, data):
 def Cval_chan(state, chan, data):
     """ copied-state (C) validity of data, where data is a multiset of
         predicates"""
-    def lshift(a, b) : return a << b
-    preds = [ lshift(chan, *a) ** data(*a) for a in data.sp.iter_all() ]
-    pred = functools.reduce(lambda p1, p2: p1 & p2, 
-                            preds, 
+    def lshift(a, b): return a << b
+    preds = [lshift(chan, *a) ** data(*a) for a in data.sp.iter_all()]
+    pred = functools.reduce(lambda p1, p2: p1 & p2,
+                            preds,
                             truth(state.sp))
     return state >= pred
 
@@ -304,22 +305,22 @@ def Cval_chan(state, chan, data):
 def Cval_point_chan(state, chan, data):
     """ copied-state (C) validity of data, where data is a multiset of
         predicates"""
-    preds = [ (chan << point_pred(*a, chan.cod)) ** data(*a)
-              for a in data.sp.iter_all() ]
-    pred = functools.reduce(lambda p1, p2: p1 & p2, 
-                            preds, 
+    preds = [(chan << point_pred(*a, chan.cod)) ** data(*a)
+             for a in data.sp.iter_all()]
+    pred = functools.reduce(lambda p1, p2: p1 & p2,
+                            preds,
                             truth(state.sp))
     return state >= pred
 
 
 def Mlrn(state, data):
     """ Multiple-state learning with data, as mulitset of predicates """
-    def cond(a,b) : return a / b
-    freqs = [ data(*data.sp.get(*a))
-              for a in np.ndindex(*data.sp.shape) ]
+    def cond(a, b): return a / b
+    freqs = [data(*data.sp.get(*a))
+             for a in np.ndindex(*data.sp.shape)]
     freq = sum(freqs)
-    stats = [ (data(*a) / freq) * cond(state, *a)
-              for a in data.sp.iter_all() ]
+    stats = [(data(*a) / freq) * cond(state, *a)
+             for a in data.sp.iter_all()]
     stat = functools.reduce(lambda s1, s2: s1 + s2, stats)
     return stat
 
@@ -327,32 +328,32 @@ def Mlrn(state, data):
 def Mlrn_chan(state, chan, data):
     """ Multiple-state learning along a channel with data, 
         as mulitset of predicates """
-    def lshift(a,b) : return a << b
-    freqs = [ data(*data.sp.get(*a))
-              for a in np.ndindex(*data.sp.shape) ]
+    def lshift(a, b): return a << b
+    freqs = [data(*data.sp.get(*a))
+             for a in np.ndindex(*data.sp.shape)]
     freq = sum(freqs)
-    stats = [ (data(*a) / freq) * (state / lshift(chan, *a))
-              for a in data.sp.iter_all() ]
+    stats = [(data(*a) / freq) * (state / lshift(chan, *a))
+             for a in data.sp.iter_all()]
     stat = functools.reduce(lambda s1, s2: s1 + s2, stats)
     return stat
 
 
 def Mlrn_point_chan(state, chan, data):
     """ Multiple-state conditioning with data, as mulitset of predicates """
-    freqs = [ data(*a) for a in data.sp.iter_all() ]
+    freqs = [data(*a) for a in data.sp.iter_all()]
     freq = sum(freqs)
-    stats = [ (data(*a) / freq) * (state / (chan << point_pred(a, chan.cod)))
-              for a in data.sp.iter_all() ]
+    stats = [(data(*a) / freq) * (state / (chan << point_pred(a, chan.cod)))
+             for a in data.sp.iter_all()]
     stat = functools.reduce(lambda s1, s2: s1 + s2, stats)
     return stat
 
 
 def Clrn(state, data):
     """ Copied-state learning with data, as mulitset of predicates """
-    def expon(a, b) : return a ** b
-    preds = [ expon(*a, data(*a)) for a in data.sp.iter_all() ]
-    pred = functools.reduce(lambda p1, p2: p1 & p2, 
-                            preds, 
+    def expon(a, b): return a ** b
+    preds = [expon(*a, data(*a)) for a in data.sp.iter_all()]
+    pred = functools.reduce(lambda p1, p2: p1 & p2,
+                            preds,
                             truth(state.sp))
     return state / pred
 
@@ -360,10 +361,10 @@ def Clrn(state, data):
 def Clrn_chan(state, chan, data):
     """ Copied-state learning along a channel with data, 
         as mulitset of predicates """
-    def lshift(a,b) : return a << b
-    preds = [ lshift(chan, *a) ** data(*a) for a in data.sp.iter_all() ]
-    pred = functools.reduce(lambda p1, p2: p1 & p2, 
-                            preds, 
+    def lshift(a, b): return a << b
+    preds = [lshift(chan, *a) ** data(*a) for a in data.sp.iter_all()]
+    pred = functools.reduce(lambda p1, p2: p1 & p2,
+                            preds,
                             truth(state.sp))
     return state / pred
 
@@ -371,11 +372,11 @@ def Clrn_chan(state, chan, data):
 def Clrn_point_chan(state, chan, data):
     """ Copied-state conditioning along a channel with data, 
         as mulitset of points predicates """
-    def lshift(a,b) : return a << b
-    preds = [ (chan << point_pred(a, chan.cod)) ** data(*a)
-              for a in data.sp.iter_all() ]
-    pred = functools.reduce(lambda p1, p2: p1 & p2, 
-                            preds, 
+    def lshift(a, b): return a << b
+    preds = [(chan << point_pred(a, chan.cod)) ** data(*a)
+             for a in data.sp.iter_all()]
+    pred = functools.reduce(lambda p1, p2: p1 & p2,
+                            preds,
                             truth(state.sp))
     return state / pred
 
@@ -383,9 +384,10 @@ def Clrn_point_chan(state, chan, data):
 def binomial(N, p):
     """ Binomial distribution on {0,1,2,...,N} with probability p in [0,1] """
     Nfac = math.factorial(N)
+
     def binom_coeff(k):
         return Nfac / (math.factorial(k) * math.factorial(N-k))
-    return State([binom_coeff(k) * (p ** k) * ((1-p) ** (N-k)) 
+    return State([binom_coeff(k) * (p ** k) * ((1-p) ** (N-k))
                   for k in range(N+1)],
                  range_sp(N+1))
 
@@ -396,7 +398,7 @@ def poisson(lam, ub):
     hence the values have to adjusted so that they sum up to 1 on this
     interval.
     """
-    probabilities = [(lam ** k) * (math.e ** -lam) / math.factorial(k) 
+    probabilities = [(lam ** k) * (math.e ** -lam) / math.factorial(k)
                      for k in range(ub)]
     s = sum(probabilities)
     return State([p/s for p in probabilities], range_sp(ub))
@@ -404,14 +406,15 @@ def poisson(lam, ub):
 
 def discretized_space(low_bound, up_bound, steps):
     """ Discretization of the real interval [low_bound, up_bound] into
-    a sample space with steps many points """ 
+    a sample space with steps many points """
     step_size = (up_bound - low_bound) / steps
     points = []
     vals = []
     for i in range(steps):
         p = low_bound + i * step_size
-        points = points + [ p ]
+        points = points + [p]
     return Space(None, points)
+
 
 def discretized_state(fun, low_bound, up_bound, steps):
     """ A state with steps many points on the real line as sample space,
@@ -431,12 +434,13 @@ def discretized_uniform(low_bound, up_bound, steps):
 
 def discretized_beta(alpha, beta, steps):
     """ Beta distribution on discretized interval [0,1] """
-    return discretized_state(lambda x: stats.beta.pdf(x, a = alpha, b = beta),
+    return discretized_state(lambda x: stats.beta.pdf(x, a=alpha, b=beta),
                              0, 1, steps)
+
 
 def discretized_exponential(lamb, up_bound, steps):
     """ Exponential distribution on discretized interval [0, up_bound] """
-    return discretized_state(lambda x: stats.expon.pdf(x, scale = 1/lamb),
+    return discretized_state(lambda x: stats.expon.pdf(x, scale=1/lamb),
                              0, up_bound, steps)
 
 
@@ -460,15 +464,18 @@ no_pred = point_pred(False, bool_sp)
 
 # truth predicate is already defined in core
 
+
 def falsity(sp):
     """ Predicate that is always 0 on sample space sp """
     array = np.zeros(sp.shape)
     return Predicate(array, sp)
 
+
 def random_pred(sp):
     """ Randomly generated predicate on sample space sp """
     array = np.random.random_sample(sp.shape)
     return Predicate(array, sp)
+
 
 def eq_pred(sp):
     """ Equality relation on sp @ sp, returning 1 on pairs of equal
@@ -494,20 +501,22 @@ bnd = Space(None, ['t', 'f'])
 #
 # Basic (sharp) predicates on this domain
 #
-tt = Predicate([1,0], bnd)
+tt = Predicate([1, 0], bnd)
 ff = ~tt
 
-def bn_prior(r): 
+
+def bn_prior(r):
     """ Function for modelling an initial node, as prior state """
     return State([r, 1-r], bnd)
 
 
-def bn_pred(r,s):
+def bn_pred(r, s):
     """ Function for a predicate on a state, in a Bayesian network """
-    return Predicate([r,s], bnd)
+    return Predicate([r, s], bnd)
 
-bn_pos_pred = bn_pred(1,0)
-bn_neg_pred = bn_pred(0,1)
+
+bn_pos_pred = bn_pred(1, 0)
+bn_neg_pred = bn_pred(0, 1)
 
 
 def cpt(*ls):
@@ -517,7 +526,8 @@ def cpt(*ls):
     """
     n = len(ls)
     if n == 0:
-        raise Exception('Conditional probability table must have non-empty list of probabilities')
+        raise Exception(
+            'Conditional probability table must have non-empty list of probabilities')
     log = math.log(n, 2)
     if log != math.floor(log):
         raise Exception('Conditional probability table must have 2^n elements')

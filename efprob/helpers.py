@@ -11,7 +11,7 @@ def _prod(iterable):
     return functools.reduce(operator.mul, iterable, 1)
 
 #
-# real number version of the multinomial function that sends 
+# real number version of the multinomial function that sends
 # (r_1, ..., r_n) to the fraction
 #
 # (sum r_i)! / prod (r_i!)
@@ -19,11 +19,12 @@ def _prod(iterable):
 # This version uses the Gamma function instead of the factorial,
 # using that Gamma(n) = (n-1)!
 #
+
+
 def _multinomial_real(nums):
     facs = map(special.gamma, map(lambda x: 1+x, nums))
-    return math.floor(special.gamma(1 + sum(nums)) 
-                      / functools.reduce(lambda x,y: x*y, facs))
-
+    return math.floor(special.gamma(1 + sum(nums))
+                      / functools.reduce(lambda x, y: x*y, facs))
 
 
 #
@@ -47,6 +48,8 @@ def mask_restrict(super_mask, sub_mask):
 # Add two masks pointwise, throwing an error if there are two 1's at a
 # particular position.
 #
+
+
 def mask_sum(mask1, mask2):
     n = len(mask1)
     if len(mask2) != n:
@@ -60,12 +63,16 @@ def mask_sum(mask1, mask2):
 #
 # Repeated sum of masks
 #
+
+
 def mask_summation(mask_list):
     return reduce(lambda m1, m2: mask_sum(m1, m2), mask_list)
 
 #
 # Use mask as filter for a list
 #
+
+
 def mask_filter(ls, mask):
     if len(ls) != len(mask):
         raise Exception('Length mismatch in mask filtering')
@@ -75,6 +82,8 @@ def mask_filter(ls, mask):
 # Check disjointness of two masks: there are no two 1's at a
 # particular position.
 #
+
+
 def mask_disjointness(mask1, mask2):
     n = len(mask1)
     if len(mask2) != n:

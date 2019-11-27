@@ -18,8 +18,10 @@ from .helpers import *
 
 float_format_spec = ".6g"
 
+
 class NormalizationError(Exception):
     """Raised when normalization fails"""
+
 
 class SpaceAtom:
     """The class Space (see below) represents multi-dimensional sample
@@ -28,6 +30,7 @@ class SpaceAtom:
     elements
 
     """
+
     def __init__(self, label, list_):
         self.label = label
         if not isinstance(list_, list):
@@ -61,6 +64,7 @@ class Space:
     shapes.
 
     """
+
     def __init__(self, *list_sa):
         if list_sa and not isinstance(list_sa[0], (tuple, SpaceAtom)):
             if len(list_sa) == 2:
@@ -157,7 +161,8 @@ class Space:
         for l in labels:
             temp = [sa for sa in self._sp if sa.label == l]
             if len(temp) != 1:
-                raise ValueError("Label {} occurs multiple times or not at all".format(l))
+                raise ValueError(
+                    "Label {} occurs multiple times or not at all".format(l))
             sp.append(temp[0])
         return Space(*sp)
 
@@ -177,6 +182,7 @@ class Channel:
     is the shape of this array.
 
     """
+
     def __init__(self, array, dom, cod):
         if isinstance(dom, Space):
             self.dom = dom
@@ -216,7 +222,7 @@ class Channel:
         return Channel(array, dom, cod)
 
     @classmethod
-    def fromstates(cls, states, dom = None):
+    def fromstates(cls, states, dom=None):
         """Creates a channel from list of states, all on the same sample
         space, where domain of the channel corresponds either to the
         length of the list of states, or to the optional argument dom;
@@ -230,7 +236,8 @@ class Channel:
         if not dom:
             dom = range_sp(len(states))
         if len(states) != _prod(dom.shape):
-            raise ValueError("Number of states does not match the given domain")
+            raise ValueError(
+                "Number of states does not match the given domain")
         cod = states[0].sp
         shape = cod.shape + dom.shape
         array = np.empty(shape, dtype=float)
@@ -255,11 +262,11 @@ class Channel:
         Kronecker product of the matrices. This product can be written
         as @.
 
-        """ 
+        """
         array = np.kron(self.array.reshape(self.cod_size,
-                                            self.dom_size),
-                         other.array.reshape(other.cod_size,
-                                     other.dom_size))
+                                           self.dom_size),
+                        other.array.reshape(other.cod_size,
+                                            other.dom_size))
         return Channel(array,
                        self.dom @ other.dom,
                        self.cod @ other.cod)
@@ -294,9 +301,9 @@ class Channel:
         channel 
         """
         ar = self.array * scalar
-        if isinstance(self, State) or isinstance(self,Predicate):
+        if isinstance(self, State) or isinstance(self, Predicate):
             return type(self)(ar, self.sp)
-        else: 
+        else:
             return Channel(ar, self.dom, self.cod)
 
     def __rmul__(self, other):
@@ -326,10 +333,11 @@ class Channel:
                           "Zero distributions will appear",
                           RuntimeWarning)
             total_inv[zeros] = 0.0
-        ar = self.array * total_inv.reshape((1,)*len(self.cod) + self.dom.shape)
-        if isinstance(self, State) or isinstance(self,Predicate):
+        ar = self.array * \
+            total_inv.reshape((1,)*len(self.cod) + self.dom.shape)
+        if isinstance(self, State) or isinstance(self, Predicate):
             return type(self)(ar, self.sp)
-        else: 
+        else:
             return Channel(ar, self.dom, self.cod)
 
     def conditional(self, pred):
@@ -340,11 +348,12 @@ class Channel:
             raise ValueError('Space mismatch in conditioning')
         try:
             return Channel.fromklmap(lambda x: self(x) / pred, self.dom, self.cod)
-                   # Channel(pred.array * self.array, 
-                   #         self.dom, 
-                   #         self.cod).normalize()
+            # Channel(pred.array * self.array,
+            #         self.dom,
+            #         self.cod).normalize()
         except NormalizationError as e:
-            raise NormalizationError("Conditioning failed: {}".format(e)) from None
+            raise NormalizationError(
+                "Conditioning failed: {}".format(e)) from None
 
     def __truediv__(self, pred):
         """ Conditioning, written as: / """
@@ -381,9 +390,9 @@ class Channel:
 
     def dagger(self, state):
         """ Inverse of a channel, given a state on its domain """
-        return Channel.fromklmap(lambda *a: 
-                                 state / (self << point_pred(a, self.cod)), 
-                                 self.cod, 
+        return Channel.fromklmap(lambda *a:
+                                 state / (self << point_pred(a, self.cod)),
+                                 self.cod,
                                  self.dom)
 
     def __getitem__(self, key):
@@ -426,7 +435,7 @@ class Channel:
         """ Turns channels dom -> 1 into predicate on space dom """
         if not all(len(l) == 1 for l in self.cod):
             raise ValueError("Codomain is not the unit")
-        return Predicate(self.array, self.dom) 
+        return Predicate(self.array, self.dom)
 
     def as_scalar(self):
         """ Turns channels 1 -> 1 into a number """
@@ -445,21 +454,23 @@ class Channel:
     def __add__(self, other):
         """ Pointwise addition of channels, written as: self + other """
         if self.dom != other.dom or self.cod != other.cod:
-            raise ValueError('Equality of domains and of codomains is required for addition')
+            raise ValueError(
+                'Equality of domains and of codomains is required for addition')
         ar = self.array + other.array
-        if isinstance(self, State) or isinstance(self,Predicate):
+        if isinstance(self, State) or isinstance(self, Predicate):
             return type(self)(ar, self.sp)
-        else: 
+        else:
             return Channel(ar, self.dom, self.cod)
 
     def __sub__(self, other):
         """ Pointwise subtraction, written as: self - other """
         if self.dom != other.dom or self.cod != other.cod:
-            raise ValueError('Equality of domains and of codomains is required for subtraction')
+            raise ValueError(
+                'Equality of domains and of codomains is required for subtraction')
         ar = self.array - other.array
-        if isinstance(self, State) or isinstance(self,Predicate):
+        if isinstance(self, State) or isinstance(self, Predicate):
             return type(self)(ar, self.sp)
-        else: 
+        else:
             return Channel(ar, self.dom, self.cod)
 
     def __and__(self, other):
@@ -468,17 +479,17 @@ class Channel:
             raise ValueError('Equality of domains and of '
                              'codomains is required for conjunction')
         ar = self.array * other.array
-        if isinstance(self, State) or isinstance(self,Predicate):
+        if isinstance(self, State) or isinstance(self, Predicate):
             return type(self)(ar, self.sp)
-        else: 
+        else:
             return Channel(ar, self.dom, self.cod)
 
     def __invert__(self):
         """ Pointwise orthosupplmenent, written as: ~self """
         ar = 1.0 - self.array
-        if isinstance(self, State) or isinstance(self,Predicate):
+        if isinstance(self, State) or isinstance(self, Predicate):
             return type(self)(ar, self.sp)
-        else: 
+        else:
             return Channel(ar, self.dom, self.cod)
 
     def __or__(self, other):
@@ -504,7 +515,6 @@ class Channel:
         return Channel(ar, self.dom, self.cod)
 
 
-
 def idn(sp):
     """ Identity channel sp -> sp on space sp; it does nothing """
     return Channel(np.eye(_prod(sp.shape)), sp, sp)
@@ -526,16 +536,16 @@ def proj(sp, mask):
 
     """
     if len(sp) == 0:
-        raise ValueError('Projection works on non-trivial space') 
+        raise ValueError('Projection works on non-trivial space')
     if not isinstance(mask, list):
         i = mask
         mask = [0] * len(sp)
         mask[i-1] = 1
     if len(sp) != len(mask):
         raise ValueError('Length mismatch in projection channel')
-    chans = [idn(Space(sp[i])) if mask[i] else discard(Space(sp[i])) 
+    chans = [idn(Space(sp[i])) if mask[i] else discard(Space(sp[i]))
              for i in range(len(mask))]
-    return functools.reduce(lambda x,y: x @ y, chans)
+    return functools.reduce(lambda x, y: x @ y, chans)
 
 
 class State(Channel):
@@ -544,7 +554,8 @@ class State(Channel):
     not enforced that the entries add up to one, so State can also be
     used for multisets.
 
-    """ 
+    """
+
     def __init__(self, array, sp):
         super().__init__(array, Space(), sp)
         self.sp = self.cod
@@ -576,12 +587,12 @@ class State(Channel):
         """ Parallel composition / product of states, written as: @ """
         return super().parcomp(other).as_state()
 
-    def expectation(self, pred = None):
+    def expectation(self, pred=None):
         """The expected value / expectation / validity of a predicate/random
         variable is computed; if no predicate argument is given, it is
         assumed that there is an inclusion mapping from the space of
         self to the real numbers.
-        """        
+        """
         if not pred:
             pred = Predicate.fromfun(lambda x: x, self.sp)
         return (pred >> self).as_scalar()
@@ -595,7 +606,7 @@ class State(Channel):
         the validity of the inclusion into the reals is computed """
         return self >= Predicate.fromfun(lambda x: x, self.sp)
 
-    def variance(self, pred = None):
+    def variance(self, pred=None):
         """Variance of a predicate/random variable; if no predicate argument
         is given, it is assumed that there is an inclusion mapping
         from the space of self to the real numbers.
@@ -607,10 +618,10 @@ class State(Channel):
         p = pred - val * truth(pred.sp)
         return self.expectation(p & p)
 
-    def st_deviation(self, pred = None):
+    def st_deviation(self, pred=None):
         return math.sqrt(self.variance(pred))
 
-    def covariance(self, pred1 = None, pred2 = None):
+    def covariance(self, pred1=None, pred2=None):
         """Covariance, for predicates with self as shared state.  If no
             predicates are provided, the identities are used.
 
@@ -625,7 +636,7 @@ class State(Channel):
         p2 = pred2 - val2 * truth(pred2.sp)
         return self >= (p1 & p2)
 
-    def joint_covariance(self, pred1 = None, pred2 = None, mask = None):
+    def joint_covariance(self, pred1=None, pred2=None, mask=None):
         """joint covariance, for predicates on pred1 defined on the part
            self.MM(mask) and pred2 on the complemented part of
            self. If no mask is provided, a binary mask is used, with
@@ -634,7 +645,7 @@ class State(Channel):
         """
         sp = self.sp
         if mask == None:
-            mask1 = [1,0]
+            mask1 = [1, 0]
         else:
             mask1 = mask
         mask2 = [1-i for i in mask1]
@@ -650,7 +661,7 @@ class State(Channel):
         p2 = pred2 - val2 * truth(sp2)
         return self >= ((proj(sp, mask1) << p1) & (proj(sp, mask2) << p2))
 
-    def correlation(self, pred1 = None, pred2 = None):
+    def correlation(self, pred1=None, pred2=None):
         """ Correlation, for predicates with self as shared state """
         if not pred1:
             pred1 = Predicate.fromfun(lambda x: x, self.sp)
@@ -660,10 +671,10 @@ class State(Channel):
         std2 = self.st_deviation(pred2)
         return self.covariance(pred1, pred2) / (std1 * std2)
 
-    def joint_correlation(self, pred1 = None, pred2 = None, mask = None):
+    def joint_correlation(self, pred1=None, pred2=None, mask=None):
         """ see joint_covariance for explanation """
         if mask == None:
-            mask1 = [1,0]
+            mask1 = [1, 0]
         else:
             mask1 = mask
         mask2 = [1-i for i in mask1]
@@ -684,7 +695,7 @@ class State(Channel):
         return super().MM(*mask).as_state()
 
     def as_chan(self):
-        """ Turns state into channel 1 -> dom """ 
+        """ Turns state into channel 1 -> dom """
         return Channel(self.array, Space(), self.sp)
 
     def __truediv__(self, pred):
@@ -694,7 +705,8 @@ class State(Channel):
         try:
             return State(pred.array * self.array, self.sp).normalize()
         except NormalizationError as e:
-            raise NormalizationError("Conditioning failed: {}".format(e)) from None
+            raise NormalizationError(
+                "Conditioning failed: {}".format(e)) from None
 
     def get_value(self, *args):
         """ Allows states to be used as function dom -> reals, for elements
@@ -725,14 +737,14 @@ class State(Channel):
             self.plot2(skiplabels)
         else:
             raise ValueError('plots are only supported for dimensions 1 or 2')
-  
-    def plot1(self, skiplabels=None): 
+
+    def plot1(self, skiplabels=None):
         """ Plots one dimensional states; is fragile. """
         xs = self.sp[0].list
         #print( xs )
         ys = [self(x) for x in xs]
         #print( ys )
-        plt.rcParams["figure.figsize"] = (10,5)
+        plt.rcParams["figure.figsize"] = (10, 5)
         if skiplabels:
             labels = [""] * len(xs)
             for i in range(math.floor(len(xs)/skiplabels)):
@@ -745,12 +757,12 @@ class State(Channel):
         print("Skips: ", skiplabels, labels)
         plt.subplots()
         plt.xticks(xs, labels, rotation=45)
-        plt.bar(xs, ys, align="center", width = 1/(1.5 * len(xs)))
+        plt.bar(xs, ys, align="center", width=1/(1.5 * len(xs)))
         plt.draw()
         plt.pause(0.001)
         input("Press [enter] to continue.")
 
-    def plot2(self, skiplabels=None): 
+    def plot2(self, skiplabels=None):
         """ Plots one dimensional states; is fragile. """
         # handling of labels is unclear; links:
         # https://matplotlib.org/gallery/mplot3d/3d_bars.html
@@ -761,23 +773,23 @@ class State(Channel):
         ys = self.sp[1].list
         lx = len(xs)
         ly = len(ys)
-        zs = [self(x,y) for x in xs for y in ys]
-        print( xs )
-        #xpos = [1,1,1,2,3] # x coordinates of each bar
-        #ypos = [1,2,3,2,3] # y coordinates of each bar
+        zs = [self(x, y) for x in xs for y in ys]
+        print(xs)
+        # xpos = [1,1,1,2,3] # x coordinates of each bar
+        # ypos = [1,2,3,2,3] # y coordinates of each bar
         xpos = []
         ypos = []
         for i in range(lx):
             xpos += [xs[lx-i-1]] * ly
             ypos += ys
-        print( xpos )
-        print( ypos )
+        print(xpos)
+        print(ypos)
         num_elements = len(xpos)
-        zpos = [0] * num_elements # z coordinates of each bar
-        dx = np.ones(10) # width of each bar
-        dy = np.ones(10) # depth of each bar
-        dz = [1,2,3,4,5]
-        #dz = [10,2,3,4,5,6,7,8,9] # height of each bar
+        zpos = [0] * num_elements  # z coordinates of each bar
+        dx = np.ones(10)  # width of each bar
+        dy = np.ones(10)  # depth of each bar
+        dz = [1, 2, 3, 4, 5]
+        # dz = [10,2,3,4,5,6,7,8,9] # height of each bar
 
         ticksx = np.arange(0.2, 5, 1)
         plt.xticks(ticksx, xs)
@@ -786,8 +798,8 @@ class State(Channel):
         plt.yticks(ticksy, ys)
 
         ax1.bar3d(xpos, ypos, zpos, 0.5, 0.5, zs)
-        #ax1.bar3d(xpos, ypos, zpos, dx, dy, dz, color='#00ceaa')
-        #ax1.bar3d(xs, ys, zs, xs, ys, zs, color='#00ceaa')
+        # ax1.bar3d(xpos, ypos, zpos, dx, dy, dz, color='#00ceaa')
+        # ax1.bar3d(xs, ys, zs, xs, ys, zs, color='#00ceaa')
         plt.draw()
         plt.pause(0.001)
         input("Press [enter] to continue.")
@@ -807,7 +819,7 @@ class Predicate(Channel):
     are between zero and one, so Predicate can also be used for
     observables.
 
-    """ 
+    """
 
     def __init__(self, array, sp):
         super().__init__(array, sp, Space())
@@ -852,7 +864,7 @@ class Predicate(Channel):
         items = [self.sp[i][index[i]] for i in range(len(self.sp))]
         return (maxprob, items)
 
-    def flrn(self, chan = None, prior = None):
+    def flrn(self, chan=None, prior=None):
         """ Frequentist learning from predicate, seens as multiset, via
         normalization, returning a state.
         If a channel is provided, the learning is done along the channel"""
@@ -863,6 +875,7 @@ class Predicate(Channel):
         if chan == None:
             return prior / self
         return prior / (chan << self)
+
 
 def truth(sp):
     """ Predicate that is always 1 on sample space sp """
@@ -879,4 +892,3 @@ def point_pred(point, sp):
     array = np.zeros(sp.shape)
     array[sp.get_index(*point)] = 1
     return Predicate(array, sp)
-
