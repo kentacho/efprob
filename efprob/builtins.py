@@ -76,8 +76,8 @@ def copy(sp, n=2):
     if n % 2 == 0:
         if n == 2:
             return copy2(sp)
-        return (copy(sp, n/2) @ copy(sp, n/2)) * copy2(sp)
-    return (idn(sp) @ copy(sp, n-1)) * copy2(sp)
+        return (copy(sp, n / 2) @ copy(sp, n / 2)) * copy2(sp)
+    return (idn(sp) @ copy(sp, n - 1)) * copy2(sp)
 
 
 def tuple_chan(*chans):
@@ -92,7 +92,7 @@ def tuple_chan(*chans):
 
 def proj1(sp1, sp2):
     """ shorthand for first projection sp1 @ sp2 -> sp1,
-    using the projection function proj defined in core 
+    using the projection function proj defined in core
     """
     return proj(sp1 @ sp2, 1)
 
@@ -126,11 +126,11 @@ def random_chan(dom, cod):
 def convex_sum(prob_item_list):
     """ Yields convex sum
 
-    r1 * a1 + ... + rn * an 
+    r1 * a1 + ... + rn * an
 
-    for input list of the form 
+    for input list of the form
 
-    [ (r1, an), ..., (rn, an) ] 
+    [ (r1, an), ..., (rn, an) ]
 
     This function be used for states and channels
     """
@@ -168,7 +168,7 @@ init_state = State([], init_sp)
 
 def point_state(point, sp):
     """ singleton / Dirac state for the element called point the sample
-    space sp 
+    space sp
     """
     if not isinstance(point, tuple):
         point = (point,)
@@ -194,9 +194,9 @@ def flip(r, sp=None):
     """ coin with bias r, from the unit interval [0,1], by default on the
     boolean space with elements True, False """
     if isinstance(sp, Space):
-        return State([r, 1-r], sp)
+        return State([r, 1 - r], sp)
     else:
-        return State([r, 1-r], bool_sp)
+        return State([r, 1 - r], bool_sp)
 
 
 def coin(r):
@@ -213,7 +213,7 @@ def cup(sp):
 
 def cup_state(sp):
     """ cup, but now normalized to a probability distribution (state) """
-    return 1/sp.size() * cup(sp)
+    return 1 / sp.size() * cup(sp)
 
 
 def tvdist(s, t):
@@ -326,7 +326,7 @@ def Mlrn(state, data):
 
 
 def Mlrn_chan(state, chan, data):
-    """ Multiple-state learning along a channel with data, 
+    """ Multiple-state learning along a channel with data,
         as mulitset of predicates """
     def lshift(a, b): return a << b
     freqs = [data(*data.sp.get(*a))
@@ -359,7 +359,7 @@ def Clrn(state, data):
 
 
 def Clrn_chan(state, chan, data):
-    """ Copied-state learning along a channel with data, 
+    """ Copied-state learning along a channel with data,
         as mulitset of predicates """
     def lshift(a, b): return a << b
     preds = [lshift(chan, *a) ** data(*a) for a in data.sp.iter_all()]
@@ -370,7 +370,7 @@ def Clrn_chan(state, chan, data):
 
 
 def Clrn_point_chan(state, chan, data):
-    """ Copied-state conditioning along a channel with data, 
+    """ Copied-state conditioning along a channel with data,
         as mulitset of points predicates """
     def lshift(a, b): return a << b
     preds = [(chan << point_pred(a, chan.cod)) ** data(*a)
@@ -386,10 +386,10 @@ def binomial(N, p):
     Nfac = math.factorial(N)
 
     def binom_coeff(k):
-        return Nfac / (math.factorial(k) * math.factorial(N-k))
-    return State([binom_coeff(k) * (p ** k) * ((1-p) ** (N-k))
-                  for k in range(N+1)],
-                 range_sp(N+1))
+        return Nfac / (math.factorial(k) * math.factorial(N - k))
+    return State([binom_coeff(k) * (p ** k) * ((1 - p) ** (N - k))
+                  for k in range(N + 1)],
+                 range_sp(N + 1))
 
 
 def poisson(lam, ub):
@@ -401,7 +401,7 @@ def poisson(lam, ub):
     probabilities = [(lam ** k) * (math.e ** -lam) / math.factorial(k)
                      for k in range(ub)]
     s = sum(probabilities)
-    return State([p/s for p in probabilities], range_sp(ub))
+    return State([p / s for p in probabilities], range_sp(ub))
 
 
 def discretized_space(low_bound, up_bound, steps):
@@ -424,7 +424,7 @@ def discretized_state(fun, low_bound, up_bound, steps):
     dsp = discretized_space(low_bound, up_bound, steps)
     vals = [fun(p) for p in dsp[0].list]
     tot = sum(vals)
-    return State([v/tot for v in vals], dsp)
+    return State([v / tot for v in vals], dsp)
 
 
 def discretized_uniform(low_bound, up_bound, steps):
@@ -440,7 +440,7 @@ def discretized_beta(alpha, beta, steps):
 
 def discretized_exponential(lamb, up_bound, steps):
     """ Exponential distribution on discretized interval [0, up_bound] """
-    return discretized_state(lambda x: stats.expon.pdf(x, scale=1/lamb),
+    return discretized_state(lambda x: stats.expon.pdf(x, scale=1 / lamb),
                              0, up_bound, steps)
 
 
@@ -507,7 +507,7 @@ ff = ~tt
 
 def bn_prior(r):
     """ Function for modelling an initial node, as prior state """
-    return State([r, 1-r], bnd)
+    return State([r, 1 - r], bnd)
 
 
 def bn_pred(r, s):

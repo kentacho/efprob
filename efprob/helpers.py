@@ -22,9 +22,9 @@ def _prod(iterable):
 
 
 def _multinomial_real(nums):
-    facs = map(special.gamma, map(lambda x: 1+x, nums))
+    facs = map(special.gamma, map(lambda x: 1 + x, nums))
     return math.floor(special.gamma(1 + sum(nums))
-                      / functools.reduce(lambda x, y: x*y, facs))
+                      / functools.reduce(lambda x, y: x * y, facs))
 
 
 #
@@ -66,7 +66,7 @@ def mask_sum(mask1, mask2):
 
 
 def mask_summation(mask_list):
-    return reduce(lambda m1, m2: mask_sum(m1, m2), mask_list)
+    return functools.reduce(lambda m1, m2: mask_sum(m1, m2), mask_list)
 
 #
 # Use mask as filter for a list

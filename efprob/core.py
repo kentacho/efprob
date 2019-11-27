@@ -77,7 +77,7 @@ class Space:
     def __str__(self):
         if not self._sp:
             return "()"
-        return " @ ".join("("+str(atom)+")" for atom in self._sp)
+        return " @ ".join("(" + str(atom) + ")" for atom in self._sp)
 
     def __repr__(self):
         return str(self)
@@ -204,10 +204,10 @@ class Channel:
         represents the matrix / array.
 
         """
-        array = np.empty(cod.shape+dom.shape, dtype=float)
+        array = np.empty(cod.shape + dom.shape, dtype=float)
         for domi in np.ndindex(*dom.shape):
             for codi in np.ndindex(*cod.shape):
-                array[codi+domi] = fun(*dom.get(*domi))(*cod.get(*codi))
+                array[codi + domi] = fun(*dom.get(*domi))(*cod.get(*codi))
         return Channel(array, dom, cod)
 
     @classmethod
@@ -216,9 +216,9 @@ class Channel:
         to a state.
 
         """
-        array = np.empty(cod.shape+dom.shape, dtype=float)
+        array = np.empty(cod.shape + dom.shape, dtype=float)
         for domi in np.ndindex(*dom.shape):
-            array[(...,)+domi] = fun(*dom.get(*domi)).array
+            array[(...,) + domi] = fun(*dom.get(*domi)).array
         return Channel(array, dom, cod)
 
     @classmethod
@@ -242,7 +242,7 @@ class Channel:
         shape = cod.shape + dom.shape
         array = np.empty(shape, dtype=float)
         for index, s in zip(np.ndindex(*dom.shape), states):
-            array[(...,)+index] = s.array
+            array[(...,) + index] = s.array
         return Channel(array, dom, cod)
 
     def __repr__(self):
@@ -250,9 +250,9 @@ class Channel:
         return "Channel of type: {} --> {}".format(self.dom, self.cod)
 
     def __eq__(self, other):
-        """ Equality checks that domains and codomains match and that 
+        """ Equality checks that domains and codomains match and that
         array values are 'close' """
-        return type(self) == type(other) and \
+        return isinstance(self, type(other)) and \
             self.dom == other.dom and \
             self.cod == other.cod and \
             np.all(np.isclose(self.array, other.array))
@@ -297,8 +297,8 @@ class Channel:
         return self.seqcomp(other)
 
     def smul(self, scalar):
-        """ Scalar multiplication, applied entrywise to the array of the 
-        channel 
+        """ Scalar multiplication, applied entrywise to the array of the
+        channel
         """
         ar = self.array * scalar
         if isinstance(self, State) or isinstance(self, Predicate):
@@ -334,7 +334,7 @@ class Channel:
                           RuntimeWarning)
             total_inv[zeros] = 0.0
         ar = self.array * \
-            total_inv.reshape((1,)*len(self.cod) + self.dom.shape)
+            total_inv.reshape((1,) * len(self.cod) + self.dom.shape)
         if isinstance(self, State) or isinstance(self, Predicate):
             return type(self)(ar, self.sp)
         else:
@@ -347,7 +347,8 @@ class Channel:
         if self.cod != pred.sp:
             raise ValueError('Space mismatch in conditioning')
         try:
-            return Channel.fromklmap(lambda x: self(x) / pred, self.dom, self.cod)
+            return Channel.fromklmap(
+                lambda x: self(x) / pred, self.dom, self.cod)
             # Channel(pred.array * self.array,
             #         self.dom,
             #         self.cod).normalize()
@@ -400,7 +401,7 @@ class Channel:
 
         chan[ conclusion_mask : condition_mask ]
 
-        and returns the pointwise conditional probability channel 
+        and returns the pointwise conditional probability channel
 
         """
         conclusion_mask = key.stop
@@ -415,10 +416,10 @@ class Channel:
 
     def get_state(self, *args):
         """ Turns a channel into an actual function, so that it can be
-        applied to elements of its sample space. 
+        applied to elements of its sample space.
         """
         index = self.dom.get_index(*args)
-        array = self.array[(...,)+index]
+        array = self.array[(...,) + index]
         return State(array, self.cod)
 
     def __call__(self, *args):
@@ -498,7 +499,7 @@ class Channel:
 
     def hadamard_inv(self):
         """ Hadamard inverse: elementwise multiplicative inverse """
-        ar = np.vectorize(lambda x: 1/x)(self.array)
+        ar = np.vectorize(lambda x: 1 / x)(self.array)
         if isinstance(self, State):
             return State(ar, self.sp)
         if isinstance(self, Predicate):
@@ -540,7 +541,7 @@ def proj(sp, mask):
     if not isinstance(mask, list):
         i = mask
         mask = [0] * len(sp)
-        mask[i-1] = 1
+        mask[i - 1] = 1
     if len(sp) != len(mask):
         raise ValueError('Length mismatch in projection channel')
     chans = [idn(Space(sp[i])) if mask[i] else discard(Space(sp[i]))
@@ -602,7 +603,7 @@ class State(Channel):
         return self.expectation(pred)
 
     def mean(self):
-        """ Assuming that the elements of the domain are real numbers, 
+        """ Assuming that the elements of the domain are real numbers,
         the validity of the inclusion into the reals is computed """
         return self >= Predicate.fromfun(lambda x: x, self.sp)
 
@@ -644,11 +645,11 @@ class State(Channel):
 
         """
         sp = self.sp
-        if mask == None:
+        if mask is None:
             mask1 = [1, 0]
         else:
             mask1 = mask
-        mask2 = [1-i for i in mask1]
+        mask2 = [1 - i for i in mask1]
         sp1 = sp.MM(*mask1)
         sp2 = sp.MM(*mask2)
         if not pred1:
@@ -673,11 +674,11 @@ class State(Channel):
 
     def joint_correlation(self, pred1=None, pred2=None, mask=None):
         """ see joint_covariance for explanation """
-        if mask == None:
+        if mask is None:
             mask1 = [1, 0]
         else:
             mask1 = mask
-        mask2 = [1-i for i in mask1]
+        mask2 = [1 - i for i in mask1]
         if not pred1:
             pred1 = Predicate.fromfun(lambda x: x, self.sp.MM(*mask1))
         if not pred1:
@@ -718,7 +719,7 @@ class State(Channel):
         return self.get_value(*args)
 
     def argmax(self):
-        """ Maximum a posteriori probability (MAP): returns the list 
+        """ Maximum a posteriori probability (MAP): returns the list
         of pairs (r,x) where the probability r is maximal.
         """
         index = np.unravel_index(np.argmax(self.array), self.array.shape)
@@ -747,8 +748,8 @@ class State(Channel):
         plt.rcParams["figure.figsize"] = (10, 5)
         if skiplabels:
             labels = [""] * len(xs)
-            for i in range(math.floor(len(xs)/skiplabels)):
-                labels[skiplabels*i] = xs[skiplabels*i]
+            for i in range(math.floor(len(xs) / skiplabels)):
+                labels[skiplabels * i] = xs[skiplabels * i]
         else:
             labels = xs
         # round float label entries to two decimals
@@ -757,7 +758,7 @@ class State(Channel):
         print("Skips: ", skiplabels, labels)
         plt.subplots()
         plt.xticks(xs, labels, rotation=45)
-        plt.bar(xs, ys, align="center", width=1/(1.5 * len(xs)))
+        plt.bar(xs, ys, align="center", width=1 / (1.5 * len(xs)))
         plt.draw()
         plt.pause(0.001)
         input("Press [enter] to continue.")
@@ -780,7 +781,7 @@ class State(Channel):
         xpos = []
         ypos = []
         for i in range(lx):
-            xpos += [xs[lx-i-1]] * ly
+            xpos += [xs[lx - i - 1]] * ly
             ypos += ys
         print(xpos)
         print(ypos)
@@ -868,11 +869,11 @@ class Predicate(Channel):
         """ Frequentist learning from predicate, seens as multiset, via
         normalization, returning a state.
         If a channel is provided, the learning is done along the channel"""
-        if prior == None:
-            if chan == None:
+        if prior is None:
+            if chan is None:
                 return uniform_state(self.sp) / self
             return uniform_state(chan.dom) / (chan << self)
-        if chan == None:
+        if chan is None:
             return prior / self
         return prior / (chan << self)
 
@@ -884,8 +885,8 @@ def truth(sp):
 
 
 def point_pred(point, sp):
-    """ Singleton / Dirac predicate for the element called point the 
-    sample space sp 
+    """ Singleton / Dirac predicate for the element called point the
+    sample space sp
     """
     if not isinstance(point, tuple):
         point = (point,)
