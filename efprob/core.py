@@ -432,7 +432,7 @@ class Channel:
         """ Turns channels 1 -> 1 into a number """
         if _prod(self.dom) != 1 or _prod(self.cod) != 1:
             raise ValueError("Not scalar type")
-        return np.asscalar(self.array)
+        return self.array.item()
 
     def __rshift__(self, stat):
         """ State transformation chan >> stat """
