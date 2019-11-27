@@ -2,15 +2,14 @@
 Built in functions
 """
 
+import functools
+import math
+import operator
+import numpy as np
+import scipy.stats as stats
 from .helpers import _prod
 from .core import (Space, range_sp, Channel, State, Predicate,
                    uniform_state, idn, discard, proj, truth, point_pred)
-import numpy as np
-import functools
-import math
-import random
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 
 
 ##############################################################
@@ -119,8 +118,8 @@ def uniform_chan(dom, cod):
 def random_chan(dom, cod):
     """ Random channel via disintegration of random state on the product """
     return chan_fromklmap(lambda *x: random_state(cod), dom, cod)
-#s = random_state(dom @ cod)
-#    return s[ [0,1] : [1,0] ]
+# s = random_state(dom @ cod)
+#     return s[ [0,1] : [1,0] ]
 
 
 def convex_sum(prob_item_list):
@@ -409,7 +408,6 @@ def discretized_space(low_bound, up_bound, steps):
     a sample space with steps many points """
     step_size = (up_bound - low_bound) / steps
     points = []
-    vals = []
     for i in range(steps):
         p = low_bound + i * step_size
         points = points + [p]

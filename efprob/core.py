@@ -7,13 +7,8 @@ import functools
 import numpy as np
 import warnings
 import math
-import random
-import scipy.stats as stats
-import scipy.special as special
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from .helpers import (_prod, _multinomial_real)
-from .helpers import *
+from .helpers import (_prod, mask_sum, mask_restrict)
 
 
 float_format_spec = ".6g"
@@ -742,9 +737,9 @@ class State(Channel):
     def plot1(self, skiplabels=None):
         """ Plots one dimensional states; is fragile. """
         xs = self.sp[0].list
-        #print( xs )
+        # print( xs )
         ys = [self(x) for x in xs]
-        #print( ys )
+        # print( ys )
         plt.rcParams["figure.figsize"] = (10, 5)
         if skiplabels:
             labels = [""] * len(xs)
@@ -787,9 +782,9 @@ class State(Channel):
         print(ypos)
         num_elements = len(xpos)
         zpos = [0] * num_elements  # z coordinates of each bar
-        dx = np.ones(10)  # width of each bar
-        dy = np.ones(10)  # depth of each bar
-        dz = [1, 2, 3, 4, 5]
+        # dx = np.ones(10)  # width of each bar
+        # dy = np.ones(10)  # depth of each bar
+        # dz = [1, 2, 3, 4, 5]
         # dz = [10,2,3,4,5,6,7,8,9] # height of each bar
 
         ticksx = np.arange(0.2, 5, 1)

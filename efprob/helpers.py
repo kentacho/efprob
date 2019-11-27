@@ -5,6 +5,7 @@ Helper functions
 import operator
 import functools
 import math
+import scipy.special as special
 
 
 def _prod(iterable):
