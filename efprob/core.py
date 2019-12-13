@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from .helpers import (_prod, mask_sum, mask_restrict)
 
 
-float_format_spec = ".6g"
+float_format_spec = ".4g"
 
 
 class NormalizationError(Exception):
@@ -597,6 +597,9 @@ class State(Channel):
         """ validity of pred in the current state, written as: self >= pred """
         return self.expectation(pred)
 
+    def flrn(self):
+        return super().normalize().as_state()
+
     def mean(self):
         """ Assuming that the elements of the domain are real numbers,
         the validity of the inclusion into the reals is computed """
@@ -853,24 +856,15 @@ class Predicate(Channel):
         """ Make it possible to use predicate as function dom -> reals. """
         return super().__call__(*args).as_scalar()
 
+    def normalize(self):
+        return super().normalize().as_pred()
+
     def argmax(self):
         """ Maximum a posteriori probability (MAP); same as for states """
         index = np.unravel_index(np.argmax(self.array), self.array.shape)
         maxprob = self.array[index]
         items = [self.sp[i][index[i]] for i in range(len(self.sp))]
         return (maxprob, items)
-
-    def flrn(self, chan=None, prior=None):
-        """ Frequentist learning from predicate, seens as multiset, via
-        normalization, returning a state.
-        If a channel is provided, the learning is done along the channel"""
-        if prior is None:
-            if chan is None:
-                return uniform_state(self.sp) / self
-            return uniform_state(chan.dom) / (chan << self)
-        if chan is None:
-            return prior / self
-        return prior / (chan << self)
 
 
 def truth(sp):

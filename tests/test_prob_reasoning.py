@@ -531,6 +531,34 @@ def test_joint_state_factorisation():
     assert joint == (idn(A) @ f @ g @ idn(B)) >> ((copy(A) @ copy(B)) >> s)
 
 
+def test_natural_join_exc():
+    X = Space("X", ['x1', 'x2'])
+    Y = Space("Y", ['y1', 'y2', 'y3'])
+    Z = Space("Z", ['z1', 'z2', 'z3'])
+    w = State([1/4, 1/4, 0, 1/6, 1/6, 1/6], X @ Y)
+    r = State([1/12, 1/3, 1/12, 1/8, 1/8, 1/4], X @ Z)
+    #
+    # equal marginals
+    #
+    #assert w.MM(1,0) == r.MM(1,0)
+    #
+    # extracted channels
+    #
+    c = w[ [0,1] : [1,0] ]
+    assert c('x1') == State([1/2,1/2,0],Y)
+    assert c('x2') == State([1/3,1/3,1/3],Y)
+    d = r[ [0,1] : [1,0] ]
+    assert d('x1') == State([1/6,2/3,1/6],Z)
+    assert d('x2') == State([1/4,1/4,1/2],Z) 
+    natjoin = ((idn(X) @ c @ d) * (idn(X) @ copy(X)) * copy(X)) >> w.MM(1,0)
+    assert natjoin == State([1/24, 1/6, 1/24,
+                             1/24, 1/6, 1/24,
+                             0, 0, 0,
+                             1/24, 1/24, 1/12,
+                             1/24, 1/24, 1/12,
+                             1/24, 1/24, 1/12], X @ Y @ Z)
+
+
 def test_barbers_burglary_alarm():
     B = Space("Burglary", ['b', '~b'])
     E = Space("Earthquake", ['e', '~e'])
@@ -828,7 +856,7 @@ def test_bag_learnin():
     assert d('l', 'r', '~h') == State([1/2, 1/2], T)
     assert d('l', 'g', 'h') == State([1/2, 1/2], T)
     assert d('l', 'g', '~h') == State([12/39, 27/39], T)
-    data = Predicate([273, 93, 104, 90, 79, 100, 94, 167], F @ W @ H)
+    data = State([273, 93, 104, 90, 79, 100, 94, 167], F @ W @ H)
     # 
     # M-learning
     bags = Mlrn_point_chan(prior, e, data)
@@ -993,11 +1021,11 @@ def test_coin_classification():
     X = range_sp(2)
     u2 = uniform_state(X)
     e = chan_fromstates([flip(3/5, C), flip(1/2, C)], X)
-    mss = [ Predicate([5,5], C), 
-            Predicate([9,1], C), 
-            Predicate([8,2], C), 
-            Predicate([4,6], C), 
-            Predicate([7,3], C) ]
+    mss = [ State([5,5], C), 
+            State([9,1], C), 
+            State([8,2], C), 
+            State([4,6], C), 
+            State([7,3], C) ]
     #
     # C-Learning from all multisets separately
     #
@@ -1134,7 +1162,7 @@ def test_coursera():
     #
     X = range_sp(2)
     Y = range_sp(3)
-    data = Predicate([3,2,5], Y)
+    data = State([3,2,5], Y)
     alpha = 0.5
     beta = 0.5
     gamma = 0.5
@@ -1160,13 +1188,5 @@ def test_coursera():
     # beta = 6/7
     # gamma = 4/11
     #
-
-
-
-
-
-
-
-
 
 
