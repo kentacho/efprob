@@ -216,7 +216,7 @@ def test_coin_parameter():
     N = 100
     prior = discretized_uniform(0, 1, N)
     chan = chan_fromklmap(lambda r: flip(r), prior.sp, bool_sp)
-    assert (chan >> prior) == State([99/200, 101/200], bool_sp)
+    assert (chan >> prior) == State([1/2, 1/2], bool_sp)
     observations = [0,1,1,1,0,0,1,1]
     s = prior
     #s.plot(10)
@@ -231,7 +231,7 @@ def test_coin_parameter():
     #
     # Expected value
     #
-    assert s.expectation() == 0.6000000167832008
+    assert s.expectation() == 0.599999985316273
 
 
 def test_asia_visit():
@@ -951,39 +951,39 @@ def test_shape_classification():
     #
     # Initially
     #
-    assert (e >> w) == State([0.25, 0.37375, 0.37625], Y)
-    assert w.expectation() == 0.495
+    assert (e >> w) == State([0.25, 0.375, 0.375], Y)
+    assert w.expectation() == 0.5
     #
     # 10 steps of M-learning
     #
     for i in range(10):
         w = Mlrn_point_chan(w, d * e, Zdata)
-    assert (e >> w) == State([0.25, 0.37501, 0.37499], Y)
-    assert np.isclose(w.expectation(), 0.50003)
+    assert (e >> w) == State([0.25, 0.37601, 0.37399], Y)
+    assert np.isclose(w.expectation(), 0.504027)
     #
     # 25 steps of M-learning
     #
     w = discretized_uniform(0, 1, N)
     for i in range(25):
         w = Mlrn_point_chan(w, d * e, Zdata)
-    assert (e >> w) == State([0.25, 0.376436, 0.373564], Y)
-    assert np.isclose(w.expectation(), 0.50574)
+    assert (e >> w) == State([0.25, 0.377151, 0.37285], Y)
+    assert np.isclose(w.expectation(), 0.50860)
     #
     # 100 steps of M-learning
     #
     w = discretized_uniform(0, 1, N)
     for i in range(100):
         w = Mlrn_point_chan(w, d * e, Zdata)
-    assert (e >> w) == State([0.25, 0.37934, 0.37066], Y)
-    assert np.isclose(w.expectation(), 0.51736)
+    assert (e >> w) == State([0.25, 0.379474, 0.370526], Y)
+    assert np.isclose(w.expectation(), 0.517895)
     #
     # 250 steps of M-learning
     #
     w = discretized_uniform(0, 1, N)
     for i in range(250):
         w = Mlrn_point_chan(w, d * e, Zdata)
-    assert (e >> w) == State([0.25, 0.379977, 0.370023], Y)
-    assert np.isclose(w.expectation(), 0.51991)
+    assert (e >> w) == State([0.25, 0.3799821, 0.3700179], Y)
+    assert np.isclose(w.expectation(), 0.519928)
     #
     # 10 steps of C-learning
     #

@@ -409,7 +409,8 @@ def discretized_space(low_bound, up_bound, steps):
     step_size = (up_bound - low_bound) / steps
     points = []
     for i in range(steps):
-        p = low_bound + i * step_size
+        #p = low_bound + i * step_size
+        p = low_bound + (2 * i + 1) / 2 * step_size
         points = points + [p]
     return Space(None, points)
 

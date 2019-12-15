@@ -753,7 +753,7 @@ class State(Channel):
         # round float label entries to two decimals
         labels = [float("{0:.2f}".format(x)) if isinstance(x, float) else x
                   for x in labels]
-        print("Skips: ", skiplabels, labels)
+        #print("Skips: ", skiplabels, labels)
         plt.subplots()
         plt.xticks(xs, labels, rotation=45)
         plt.bar(xs, ys, align="center", width=1 / (1.5 * len(xs)))
