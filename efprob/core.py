@@ -756,7 +756,8 @@ class State(Channel):
         #print("Skips: ", skiplabels, labels)
         plt.subplots()
         plt.xticks(xs, labels, rotation=45)
-        plt.bar(xs, ys, align="center", width=1 / (1.5 * len(xs)))
+#        plt.bar(xs, ys, align="center", width=1 / (1.5 * len(xs)))
+        plt.bar(xs, ys, align="center", width=1 / (0.12 * len(xs)))
         plt.draw()
         plt.pause(0.001)
         input("Press [enter] to continue.")
@@ -850,7 +851,7 @@ class Predicate(Channel):
 
     def __pow__(self, r):
         """ Iterated conjunction (not product, like in the superclass) """
-        return Predicate.fromfun(lambda a: self(a) ** r, self.sp)
+        return Predicate(np.power(self.array, r), self.sp)
 
     def __call__(self, *args):
         """ Make it possible to use predicate as function dom -> reals. """
@@ -870,6 +871,12 @@ class Predicate(Channel):
 def truth(sp):
     """ Predicate that is always 1 on sample space sp """
     array = np.ones(sp.shape)
+    return Predicate(array, sp)
+
+
+def falsum(sp):
+    """ Predicate that is always 0 on sample space sp """
+    array = np.zeros(sp.shape)
     return Predicate(array, sp)
 
 

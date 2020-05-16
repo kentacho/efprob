@@ -140,6 +140,9 @@ def test_two_urns_draw():
 
 
 def test_taxi_cab():
+    #
+    # Example from Tverski-Kahneman'82, with base rate neglect
+    #
     C = Space("Colours", ['G', 'B'])
     w = flip(0.85, C)
     c = chan_fromstates([flip(0.8, C), flip(0.2,C)], C)
@@ -162,22 +165,44 @@ def test_blood_medicine():
     assert (prior / (b << q2)) == State([0.143382, 0.49632, 0.360294], M)
 
 
+def five_candy_bag():
+    #
+    # Example from Russel-Norvig, 20.1, about successive lime candy
+    # draws and updating of the distribution of candy bags
+    #
+    H = Space("Bags", [1,2,3,4,5])
+    C = Space("Candies", ['C', 'L'])
+    pC = point_pred('C',C)
+    pL = point_pred('L',C)
+    h = chan_fromstates([flip(1, C),
+                         flip(3/4, C),
+                         flip(1/2, C),
+                         flip(1/4, C),
+                         flip(0, C)], H)
+    prior = State([1/10, 1/5, 2/5, 1/5, 1/10], H)
+    assert ( (prior / pL) == State([0, 1/10, 2/5, 3/10, 2/5], H) )
+    assert ( (prior / pL ** 2) == State([0, 1/26, 4/13, 9/26, 4/13], H) )
+    assert ( (prior / pL ** 3) == State([0, 1/76, 4/19, 17/76, 8/19], H) )
+
+
 def test_capture_recapture():
     N = 20
     fish_sp = Space(None, [10 * i for i in range(2, 31)])
     prior = uniform_state(fish_sp)
-    chan = chan_fromklmap(lambda d: binomial(N, N/d), fish_sp, range_sp(N+1))
+    chan = chan_fromklmap(lambda d: binomial(N)(N/d), fish_sp, range_sp(N+1))
     #(chan >> prior).plot()
     posterior = prior / (chan << point_pred(5, range_sp(N+1)))
     #
     # Expected number after catching 5 marked
     #
-    assert posterior.expectation() == 116.49192983579051
+    assert np.isclose(posterior.expectation(),
+                      116.491)
     #
     # Expected number after catching 10 marked
     #
-    assert (prior / (chan << point_pred(10, range_sp(N+1)))).expectation() \
-        == 47.481088166925645
+    assert np.isclose((prior / 
+                       (chan << point_pred(10, range_sp(N+1)))).expectation(),
+                      47.481)
     #posterior.plot()
 
 
@@ -531,6 +556,20 @@ def test_joint_state_factorisation():
     assert joint == (idn(A) @ f @ g @ idn(B)) >> ((copy(A) @ copy(B)) >> s)
 
 
+def test_probabilistic_trace():
+    A = Space(None, ['a', 'b', 'c'])
+    T = range_sp(2)
+    f = chan_fromstates([State([1/4, 0, 3/4, 0], T @ T),
+                         State([2/5, 0, 0, 3/5], T @ T),
+                         State([0, 1/2, 1/2, 0], T @ T)], A)
+    g = chan_fromstates([State([1/3, 0, 2/3], A),
+                         State([1/2, 1/2, 0], A)], T)
+    assert ((g @ idn(T)) * f)[ [0,1] : [1,0] ] * copy(A) >> uniform_state(A) \
+        == State([1/3, 2/3], T)
+    assert (f * g)[ [0,1] : [1,0] ] * copy(T) >> uniform_state(T) \
+        == State([17/45, 28/45], T)
+
+
 def test_natural_join_exc():
     X = Space("X", ['x1', 'x2'])
     Y = Space("Y", ['y1', 'y2', 'y3'])
@@ -688,11 +727,17 @@ def test_missing_data_no_prior():
     #
     # Learn missing data by inserting uniform distributions at holes
     #
-    table = (uniform_state(P) @ point_state('b',B) @ point_state('u',U)) \
-            + (point_state('p',P) @ point_state('~b',B) @ point_state('u',U)) \
-            + (point_state('p',P) @ point_state('b',B) @ uniform_state(U)) \
-            + (point_state('p',P) @ point_state('b',B) @ point_state('~u',U)) \
-            + (uniform_state(P) @ point_state('~b',B) @ uniform_state(U))
+    u = uniform_state(P @ B @ U)
+    table = convex_sum([(1/5, 
+                         u / (truth(P) @ point_pred('b',B) @ point_pred('u',U))),
+                        (1/5, 
+                         u / (point_pred('p',P) @ point_pred('~b',B) @ point_pred('u',U))),
+                        (1/5, 
+                         u / (point_pred('p',P) @ point_pred('b',B) @ truth(U))),
+                        (1/5, 
+                         u / (point_pred('p',P) @ point_pred('b',B) @ point_pred('~u',U))),
+                        (1/5, 
+                         u / (truth(P) @ point_pred('~b',B) @ truth(U)))])
     assert table[[1,0,0]:[0,0,0]].as_state() == State([4/5,1/5], P)
     assert table[[0,1,0]:[1,0,0]]('p') == State([5/8, 3/8], B)
     assert table[[0,1,0]:[1,0,0]]('~p') == State([1/2, 1/2], B)
@@ -887,12 +932,13 @@ def test_bag_learnin():
     #
     # Before learning
     #
-    assert log_Mval_point(e >> prior, data) == -2044.260364580929
+    assert np.isclose(log_Mval_point(e >> prior, data),
+                      -2044.26)
     #
     # After learning
     #
-    assert log_Mval_point(tuple_chan(f1,w1,h1) >> bags, data) \
-        == -2021.0262390280006
+    assert np.isclose(log_Mval_point(tuple_chan(f1,w1,h1) >> bags, data),
+                      -2021.02)
     #
     # Without decomposing the double dagger
     #

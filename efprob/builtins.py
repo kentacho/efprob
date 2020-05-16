@@ -9,7 +9,7 @@ import numpy as np
 import scipy.stats as stats
 from .helpers import _prod
 from .core import (Space, range_sp, Channel, State, Predicate,
-                   uniform_state, idn, discard, proj, truth, point_pred)
+                   uniform_state, idn, discard, proj, truth, falsum, point_pred)
 
 
 ##############################################################
@@ -234,6 +234,17 @@ def Mval(self, data):
     return val
 
 
+def log_Mval(self, data):
+    """ Multiple-state (M) validity of data, where data is a multiset of
+        predicates. The formula is:
+
+        Product over p in data, of (self >= p)^(multiplicity of p)
+        """
+    vals = [data(*a) * math.log(self.expectation(*a)) 
+            for a in data.sp.iter_all()]
+    return sum(vals) 
+
+
 def Mval_point(state, data):
     """ Multiple-state (M) validity, where data is a multiset of
         points, to be used as point predicates"""
@@ -243,11 +254,10 @@ def Mval_point(state, data):
 
 
 def log_Mval_point(state, data):
-    """ multiple-state (M) validity, where data is a multiset of
-        points, to be used as point predicates"""
-    vals = [math.log(state(*a) ** data(*a)) for a in data.sp.iter_all()]
-    val = functools.reduce(lambda p1, p2: p1 + p2, vals, 0)
-    return val
+    """ natural logarithm of multiple-state (M) validity, where data is a 
+        multiset of points, to be used as point predicates"""
+    vals = [data(*a) * math.log(state(*a)) for a in data.sp.iter_all()]
+    return sum(vals) 
 
 
 def Cval(state, data):
@@ -261,14 +271,39 @@ def Cval(state, data):
     return state >= pred
 
 
+def log_Cval(state, data):
+    """ natural logarithm of copied-state (C) validity of data, where data 
+        is a (natural) multiset of predicates"""
+    def cond(a, b): return a / b
+    val = 0
+    for a in data.sp.iter_all():
+        for i in range(math.floor(data(*a))):
+            val += math.log(state.expectation(*a))
+            state = cond(state, *a)
+    return val
+
+
 def Cval_point(state, data):
     """ copied-state (C) validity of data, where data is a multiset of
         points, to be used as point predicates"""
-    preds = [point_pred(*a, state.sp) ** data(*a) for a in data.sp.iter_all()]
+    preds = [point_pred(a, state.sp) ** data(*a) for a in data.sp.iter_all()]
     pred = functools.reduce(lambda p1, p2: p1 & p2,
                             preds,
                             truth(state.sp))
     return state >= pred
+
+
+def log_Cval_point(state, data):
+    """ natural logarithm of copied-state (C) validity of data, where data 
+        is a (natural) multiset of points, to be used as point predicates"""
+    def cond(a, b): return a / b
+    val = 0
+    for a in data.sp.iter_all():
+        pred = point_pred(a, state.sp)
+        for i in range(math.floor(data(*a))):
+            val += math.log(state >= pred)
+            state = state / pred
+    return val
 
 
 def Mval_chan(state, chan, data):
@@ -301,15 +336,40 @@ def Cval_chan(state, chan, data):
     return state >= pred
 
 
+def log_Cval_chan(state, chan, data):
+    """ natural logarithm of copied-state (C) validity of data, where 
+        data is a multiset ofpredicates"""
+    def lshift(a, b): return a << b
+    val = 0
+    for a in data.sp.iter_all():
+        pred = lshift(chan, *a)
+        for i in range(math.floor(data(*a))):
+            val += math.log(state >= pred)
+            state = state / pred
+    return val
+
+
 def Cval_point_chan(state, chan, data):
     """ copied-state (C) validity of data, where data is a multiset of
         predicates"""
-    preds = [(chan << point_pred(*a, chan.cod)) ** data(*a)
+    preds = [(chan << point_pred(a, chan.cod)) ** data(*a)
              for a in data.sp.iter_all()]
     pred = functools.reduce(lambda p1, p2: p1 & p2,
                             preds,
                             truth(state.sp))
     return state >= pred
+
+
+def log_Cval_point_chan(state, chan, data):
+    """ natural logarithm of copied-state (C) validity of data, where data
+        is a (natural) multiset of points, to be used as point predicates"""
+    val = 0
+    for a in data.sp.iter_all():
+        pred = chan << point_pred(a, chan.cod)
+        for i in range(math.floor(data(*a))):
+            val += math.log(state >= pred)
+            state = state / pred
+    return val
 
 
 def Mlrn(state, data):
@@ -372,23 +432,47 @@ def Clrn_point_chan(state, chan, data):
     """ Copied-state conditioning along a channel with data,
         as mulitset of points predicates """
     def lshift(a, b): return a << b
-    preds = [(chan << point_pred(a, chan.cod)) ** data(*a)
-             for a in data.sp.iter_all()]
-    pred = functools.reduce(lambda p1, p2: p1 & p2,
-                            preds,
-                            truth(state.sp))
-    return state / pred
+    # iterated version
+    for a in data.sp.iter_all():
+        pred = chan << point_pred(a, chan.cod)
+        for i in range(math.floor(data(*a))):
+            state = state / pred
+    # preds = [(chan << point_pred(a, chan.cod)) ** data(*a)
+    #          for a in data.sp.iter_all()]
+    # pred = functools.reduce(lambda p1, p2: p1 & p2,
+    #                         preds,
+    #                         truth(state.sp))
+    # return state / pred
+    return state
 
 
-def binomial(N, p):
+def binomial(N):
     """ Binomial distribution on {0,1,2,...,N} with probability p in [0,1] """
-    Nfac = math.factorial(N)
+    return lambda p: state_fromfun(lambda k: stats.binom.pmf(k, N, p), range_sp(N + 1))
 
-    def binom_coeff(k):
-        return Nfac / (math.factorial(k) * math.factorial(N - k))
-    return State([binom_coeff(k) * (p ** k) * ((1 - p) ** (N - k))
-                  for k in range(N + 1)],
-                 range_sp(N + 1))
+
+# def hypgeom(N, K, n):
+#     """Hyper geometric distribution on {0,1,2,...,n} with total number K,
+#      out of K successes and n draws
+
+#     """
+#     return state_fromfun(lambda k: stats.hypergeom.pmf(k, N, K, n), 
+#                          range_sp(n + 1))
+
+
+def hypgeom(K):
+    """Hyper geometric distribution on {0,1,2,...,K} with at k the 
+    probability of getting k black balls from multiset / state
+    n|0> + (N-n)|1>, where 0 stands for black.
+
+    """
+    def hp(stat): 
+        n = stat(0)
+        N = n + stat(1)
+        return state_fromfun(lambda k: stats.hypergeom.pmf(k, N, n, K), 
+                             range_sp(K + 1))
+    return hp
+
 
 
 def poisson(lam, ub):
