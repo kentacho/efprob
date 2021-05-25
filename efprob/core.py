@@ -10,8 +10,21 @@ import math
 import matplotlib.pyplot as plt
 from .helpers import (_prod, mask_sum, mask_restrict)
 
+# Number of decimals in printing
+float_format_spec = ".3g"
 
-float_format_spec = ".4g"
+def convex_sum(prob_item_list):
+    """ Yields convex sum
+
+    r1 * a1 + ... + rn * an
+
+    for input list of the form
+
+    [ (r1, an), ..., (rn, an) ]
+
+    This function be used both for states and channels
+    """
+    return functools.reduce(lambda x,y: x+y, (r * s for r, s in prob_item_list))
 
 
 class NormalizationError(Exception):
@@ -74,6 +87,11 @@ class Space:
             return "()"
         return " @ ".join("(" + str(atom) + ")" for atom in self._sp)
 
+    def name(self):
+        if not self._sp:
+            return "()"
+        return " @ ".join(" " + atom.label + " " for atom in self._sp)
+
     def __repr__(self):
         return str(self)
 
@@ -103,11 +121,11 @@ class Space:
 
     def __add__(self, other):
         """ Parallel product, same as matmul """
-        return Space(*(self._sp + other._sp))
+        return self @ other
 
     def __matmul__(self, other):
         """ Parallel product, same as add """
-        return self + other
+        return Space(*(self._sp + other._sp))
 
     def __pow__(self, n):
         """ iterated parallel product """
@@ -133,6 +151,9 @@ class Space:
         return tuple(self._sp[n].list[i] for n, i in enumerate(index))
 
     def get_index(self, *args):
+        # print( args )
+        # for n, a in enumerate(args):
+        #     print(n, a, self._sp[n].list.index(a) )
         return tuple(self._sp[n].list.index(a) for n, a
                      in enumerate(args))
 
@@ -169,6 +190,8 @@ def range_sp(n):
     return Space(str(n), list(range(n)))
 
 
+
+
 class Channel:
     """Probabilistic function from sample space dom to sample space cod.
     For each element of the domain, it gives a state on the space
@@ -189,7 +212,8 @@ class Channel:
             self.cod = Space(cod)
 
         shape = self.cod.shape + self.dom.shape
-        self.array = np.asarray(array, dtype=float).reshape(shape)
+        #self.array = np.asarray(array, dtype=float).reshape(shape)
+        self.array = np.asarray(array).reshape(shape)
         self.dom_size = self.dom.size()
         self.cod_size = self.cod.size()
 
@@ -199,7 +223,8 @@ class Channel:
         represents the matrix / array.
 
         """
-        array = np.empty(cod.shape + dom.shape, dtype=float)
+        array = np.empty(cod.shape + dom.shape)
+        #array = np.empty(cod.shape + dom.shape, dtype=float)
         for domi in np.ndindex(*dom.shape):
             for codi in np.ndindex(*cod.shape):
                 array[codi + domi] = fun(*dom.get(*domi))(*cod.get(*codi))
@@ -211,7 +236,8 @@ class Channel:
         to a state.
 
         """
-        array = np.empty(cod.shape + dom.shape, dtype=float)
+        array = np.empty(cod.shape + dom.shape)
+        #array = np.empty(cod.shape + dom.shape, dtype=float)
         for domi in np.ndindex(*dom.shape):
             array[(...,) + domi] = fun(*dom.get(*domi)).array
         return Channel(array, dom, cod)
@@ -235,7 +261,8 @@ class Channel:
                 "Number of states does not match the given domain")
         cod = states[0].sp
         shape = cod.shape + dom.shape
-        array = np.empty(shape, dtype=float)
+        array = np.empty(shape)
+        #array = np.empty(shape, dtype=float)
         for index, s in zip(np.ndindex(*dom.shape), states):
             array[(...,) + index] = s.array
         return Channel(array, dom, cod)
@@ -295,7 +322,7 @@ class Channel:
         """ Scalar multiplication, applied entrywise to the array of the
         channel
         """
-        ar = self.array * scalar
+        ar = scalar * self.array
         if isinstance(self, State) or isinstance(self, Predicate):
             return type(self)(ar, self.sp)
         else:
@@ -573,7 +600,11 @@ class State(Channel):
                 self.array[indices],
                 ",".join([str(d) for d in self.sp.get(*indices)]),
                 spec=float_format_spec)
-            for indices in np.ndindex(*self.sp.shape))
+            for indices in np.ndindex(*self.sp.shape) 
+            # the next line ensures that only non-zero items are printed;
+            # comment it out if zero items are relevant
+            if self.array[indices] != 0
+        ) 
 
     def as_pred(self):
         """ Turn a state into a predicate, without changing the matrix. """
@@ -595,10 +626,38 @@ class State(Channel):
 
     def __ge__(self, pred):
         """ validity of pred in the current state, written as: self >= pred """
+        if isinstance(pred, State):
+            # comparison
+            return pred <= self
         return self.expectation(pred)
+
+    def __le__(self, mult):
+        """ order relation, especially useful for multisets """
+        return np.all(np.less_equal(self.array, mult.array))
+
+    def supports(self, other):
+        """ support of other is contained in support of self """
+        out = True
+        for indices in np.ndindex(self.sp.shape):
+            out = out and (other.array[indices] == 0 or self.array[indices] > 0)
+        return out
+
+    def size(self):
+        """ sum of multiplicities; is one for distributions """
+        return np.sum(self.array)
+
+    def size_as_nat(self):
+        """ sum of multiplicities, as natural number, esp. for natural 
+        multisets """
+        return math.floor(self.size())
 
     def flrn(self):
         return super().normalize().as_state()
+
+    def flatten(self):
+        """ flattening when self is state/multiset of states/multisets """
+        pairs = [ (self(*x), *x) for x in self.sp.iter_all() ]
+        return convex_sum(pairs)
 
     def mean(self):
         """ Assuming that the elements of the domain are real numbers,
@@ -725,6 +784,28 @@ class State(Channel):
         items = [self.sp[i][index[i]] for i in range(len(self.sp))]
         return (maxprob, items)
 
+    def info_content(self):
+        """ Information content """
+        return Predicate.fromfun(lambda x: -math.log2(self(x)) if self(x) != 0 
+                                 else 0, 
+                                 self.sp)
+
+    def entropy(self):
+        """ Shannon entropy """
+        return self >= self.info_content()
+
+    def sample(self, N=1):
+        """ sample N times, producing a multiset of size N of samples """
+        ar = self.array
+        sp = self.sp
+        sam = np.random.multinomial(N, ar.reshape(sp.size()))
+        return State(sam.reshape(ar.shape), sp)
+
+    def sample_elt(self):
+        """ sample a single element from the underlying space """
+        sam = self.sample()
+        return sam.argmax()[1][0]
+
     def plot(self, skiplabels=None):
         """Plots a state as bar chart, but works only for one and two
         dimensional states without too many elements. Use with care.
@@ -755,9 +836,10 @@ class State(Channel):
                   for x in labels]
         #print("Skips: ", skiplabels, labels)
         plt.subplots()
-        plt.xticks(xs, labels, rotation=45)
-#        plt.bar(xs, ys, align="center", width=1 / (1.5 * len(xs)))
-        plt.bar(xs, ys, align="center", width=1 / (0.12 * len(xs)))
+#        plt.xticks(xs, labels, rotation=45)
+        #plt.bar(xs, ys, align="center", width = 1 / (0.12 * len(xs)))
+        plt.bar(xs, ys, align="center", width=1 / (0.7 * len(xs)))
+        #plt.bar(xs, ys, align="center", width = 1 / (0.12 * len(xs)))
         plt.draw()
         plt.pause(0.001)
         input("Press [enter] to continue.")
@@ -843,7 +925,12 @@ class Predicate(Channel):
                 ",".join([str(d) for d in self.sp.get(*indices)]),
                 self.array[indices],
                 spec=float_format_spec)
-            for indices in np.ndindex(*self.sp.shape))
+            for indices in np.ndindex(*self.sp.shape)
+            # the next line ensures that only non-zero items are printed;
+            # comment it out if zero items are relevant
+            if self.array[indices] != 0
+        )
+            
 
     def __matmul__(self, other):
         """ Parallel composition / product of predicates, written as: @ """
@@ -852,6 +939,11 @@ class Predicate(Channel):
     def __pow__(self, r):
         """ Iterated conjunction (not product, like in the superclass) """
         return Predicate(np.power(self.array, r), self.sp)
+
+    def __mod__(self, state):
+        """ Action of predicate self on states, written as: % """
+        ar = self.array * state.array
+        return State(ar, self.sp)
 
     def __call__(self, *args):
         """ Make it possible to use predicate as function dom -> reals. """
@@ -889,3 +981,5 @@ def point_pred(point, sp):
     array = np.zeros(sp.shape)
     array[sp.get_index(*point)] = 1
     return Predicate(array, sp)
+
+

@@ -844,17 +844,17 @@ def test_multiple_state_validities():
     #
     # Point-data validities
     #
-    assert Mval_point(s1, p) == 1/8
-    assert Mval_point(s2, p) == 9/64
-    assert Mval_point(s3, p) == 75/512
+    assert Eval_point(s1, p) == 1/8
+    assert Eval_point(s2, p) == 9/64
+    assert Eval_point(s3, p) == 75/512
     c = chan_fromstates([State([1/3,1/3,1/3], range_sp(3)),
                          State([1/2,1/3,1/6], range_sp(3))], s1.sp)
     q = Predicate([0,3,6], range_sp(3))
     #
     # M-validity and state/predicate transformation
     #
-    assert np.isclose(Mval_point(c >> s1, q), 1/110592)
-    assert Mval_point(s1, c << q) == 1/32
+    assert np.isclose(Eval_point(c >> s1, q), 1/110592)
+    assert Eval_point(s1, c << q) == 1/32
 
 
 def test_non_maximality_for_non_point_data():
@@ -863,16 +863,16 @@ def test_non_maximality_for_non_point_data():
     p1 = Predicate([1/2,3/4], X)
     p2 = Predicate([1,1/2], X)
     P = Predicate([1,1], Space("", [p1,p2]))
-    assert Mval(w, P) == 55/128
-    assert Mlrn(w, P) == State([16/55, 39/55], X)
-    assert np.isclose(Mval(Mlrn(w, P), P), 10579/24200)
+    assert Eval(w, P) == 55/128
+    assert Elrn(w, P) == State([16/55, 39/55], X)
+    assert np.isclose(Eval(Elrn(w, P), P), 10579/24200)
     v = State([1/2,1/2], X)
-    assert Mval(v, P) == 15/32
+    assert Eval(v, P) == 15/32
     #
     # Multiple-state conditioning with P does not give highest
     # M-validity of P
     #
-    assert Mval(Mlrn(w, P), P) < Mval(v, P)
+    assert Eval(Elrn(w, P), P) < Eval(v, P)
 
 
 def test_bag_learnin():
@@ -904,7 +904,7 @@ def test_bag_learnin():
     data = State([273, 93, 104, 90, 79, 100, 94, 167], F @ W @ H)
     # 
     # M-learning
-    bags = Mlrn_point_chan(prior, e, data)
+    bags = Elrn_point_chan(prior, e, data)
     assert bags == State([30891/50440, 19549/50440], T)
     assert bags == d >> data.flrn()
     #
@@ -932,17 +932,17 @@ def test_bag_learnin():
     #
     # Before learning
     #
-    assert np.isclose(log_Mval_point(e >> prior, data),
+    assert np.isclose(log_Eval_point(e >> prior, data),
                       -2044.26)
     #
     # After learning
     #
-    assert np.isclose(log_Mval_point(tuple_chan(f1,w1,h1) >> bags, data),
+    assert np.isclose(log_Eval_point(tuple_chan(f1,w1,h1) >> bags, data),
                       -2021.02)
     #
     # Without decomposing the double dagger
     #
-    assert log_Mval_point(dd >> bags, data) == -1979.3601270422814
+    assert log_Eval_point(dd >> bags, data) == -1979.3601270422814
 
 
 def test_four_animals():
@@ -960,7 +960,7 @@ def test_four_animals():
     # M-learning of r
     #
     for i in range(100):
-        w = Mlrn_point_chan(w, e, data)
+        w = Elrn_point_chan(w, e, data)
     #
     # average as reported in the book
     #
@@ -974,7 +974,7 @@ def test_four_animals():
                                         1/4 * (1 - r),
                                         1/4 * r],Y), w.sp, Y)
     for i in range(100):
-        w = Clrn_point_chan(w, e, data)
+        w = Ilrn_point_chan(w, e, data)
     #
     # average as reported in the book
     #
@@ -1003,7 +1003,7 @@ def test_shape_classification():
     # 10 steps of M-learning
     #
     for i in range(10):
-        w = Mlrn_point_chan(w, d * e, Zdata)
+        w = Elrn_point_chan(w, d * e, Zdata)
     assert (e >> w) == State([0.25, 0.37601, 0.37399], Y)
     assert np.isclose(w.expectation(), 0.504027)
     #
@@ -1011,7 +1011,7 @@ def test_shape_classification():
     #
     w = discretized_uniform(0, 1, N)
     for i in range(25):
-        w = Mlrn_point_chan(w, d * e, Zdata)
+        w = Elrn_point_chan(w, d * e, Zdata)
     assert (e >> w) == State([0.25, 0.377151, 0.37285], Y)
     assert np.isclose(w.expectation(), 0.50860)
     #
@@ -1019,7 +1019,7 @@ def test_shape_classification():
     #
     w = discretized_uniform(0, 1, N)
     for i in range(100):
-        w = Mlrn_point_chan(w, d * e, Zdata)
+        w = Elrn_point_chan(w, d * e, Zdata)
     assert (e >> w) == State([0.25, 0.379474, 0.370526], Y)
     assert np.isclose(w.expectation(), 0.517895)
     #
@@ -1027,7 +1027,7 @@ def test_shape_classification():
     #
     w = discretized_uniform(0, 1, N)
     for i in range(250):
-        w = Mlrn_point_chan(w, d * e, Zdata)
+        w = Elrn_point_chan(w, d * e, Zdata)
     assert (e >> w) == State([0.25, 0.3799821, 0.3700179], Y)
     assert np.isclose(w.expectation(), 0.519928)
     #
@@ -1035,7 +1035,7 @@ def test_shape_classification():
     #
     w = discretized_uniform(0, 1, N)
     for i in range(10):
-        w = Clrn_point_chan(w, d * e, Zdata)
+        w = Ilrn_point_chan(w, d * e, Zdata)
     assert (e >> w) == State([0.25, 0.379741, 0.370259], Y)
     assert np.isclose(w.expectation(), 0.51896)
     #
@@ -1043,7 +1043,7 @@ def test_shape_classification():
     #
     w = discretized_uniform(0, 1, N)
     for i in range(25):
-        w = Clrn_point_chan(w, d * e, Zdata)
+        w = Ilrn_point_chan(w, d * e, Zdata)
     assert (e >> w) == State([0.25, 0.379896, 0.370104], Y)
     assert np.isclose(w.expectation(), 0.51958)
     #
@@ -1051,7 +1051,7 @@ def test_shape_classification():
     #
     w = discretized_uniform(0, 1, N)
     for i in range(60):
-        w = Clrn_point_chan(w, d * e, Zdata)
+        w = Ilrn_point_chan(w, d * e, Zdata)
     assert (e >> w) == State([0.25, 0.379957, 0.370043], Y)
     assert np.isclose(w.expectation(), 0.51983)
 
@@ -1075,19 +1075,19 @@ def test_coin_classification():
     #
     # C-Learning from all multisets separately
     #
-    assert Clrn_point_chan(u2, e, mss[0]) == State([0.449149, 0.550851], X)
-    assert Clrn_point_chan(u2, e, mss[1]) == State([0.804986, 0.195014], X)
-    assert Clrn_point_chan(u2, e, mss[2]) == State([0.733467, 0.266533], X)
-    assert Clrn_point_chan(u2, e, mss[3]) == State([0.352156, 0.647844], X)
-    assert Clrn_point_chan(u2, e, mss[4]) == State([0.647215, 0.352785], X)
+    assert Ilrn_point_chan(u2, e, mss[0]) == State([0.449149, 0.550851], X)
+    assert Ilrn_point_chan(u2, e, mss[1]) == State([0.804986, 0.195014], X)
+    assert Ilrn_point_chan(u2, e, mss[2]) == State([0.733467, 0.266533], X)
+    assert Ilrn_point_chan(u2, e, mss[3]) == State([0.352156, 0.647844], X)
+    assert Ilrn_point_chan(u2, e, mss[4]) == State([0.647215, 0.352785], X)
     #
     # M-Learning from all multisets separately
     #
-    assert Mlrn_point_chan(u2, e, mss[0]) == State([0.494949, 0.505051], X)
-    assert Mlrn_point_chan(u2, e, mss[1]) == State([0.535354, 0.464646], X)
-    assert Mlrn_point_chan(u2, e, mss[2]) == State([0.525253, 0.474747], X)
-    assert Mlrn_point_chan(u2, e, mss[3]) == State([0.484848, 0.515152], X)
-    assert Mlrn_point_chan(u2, e, mss[4]) == State([0.515152, 0.484848], X)
+    assert Elrn_point_chan(u2, e, mss[0]) == State([0.494949, 0.505051], X)
+    assert Elrn_point_chan(u2, e, mss[1]) == State([0.535354, 0.464646], X)
+    assert Elrn_point_chan(u2, e, mss[2]) == State([0.525253, 0.474747], X)
+    assert Elrn_point_chan(u2, e, mss[3]) == State([0.484848, 0.515152], X)
+    assert Elrn_point_chan(u2, e, mss[4]) == State([0.515152, 0.484848], X)
     #
     # The learning algorithm in a single function
     #
@@ -1095,7 +1095,7 @@ def test_coin_classification():
         N = len(point_data_list)
         if N == 0:
             raise Exception('Learning requires non-empty list of data')
-        joints = [ 1/N * (Clrn_point_chan(stat, chan, d) @ d.flrn())
+        joints = [ 1/N * (Ilrn_point_chan(stat, chan, d) @ d.flrn())
                    for d in point_data_list ]
         joint = functools.reduce(lambda x,y: x + y, joints)
         dom_size = len(chan.dom)
@@ -1144,15 +1144,15 @@ def test_learn_along_channel():
     #
     assert ((u >= e << ap) * (u >= e << bp) ** 2 * (u >= e << cp)) \
         == 539 / 36864 - 0.000000000000000005
-    assert Mval(e >> u, Predicate([1,2,1], Space("", [ap, bp, cp]))) \
+    assert Eval(e >> u, Predicate([1,2,1], Space("", [ap, bp, cp]))) \
         == 539 / 36864 - 0.000000000000000005
-    assert Mval_point(e >> u, Predicate([1,2,1], Space("", ['a', 'b', 'c']))) \
+    assert Eval_point(e >> u, Predicate([1,2,1], Space("", ['a', 'b', 'c']))) \
         == 539 / 36864 - 0.000000000000000005
-    assert Mval(u, Predicate([1,2,1], Space("", [e << ap, e << bp, e << cp]))) \
+    assert Eval(u, Predicate([1,2,1], Space("", [e << ap, e << bp, e << cp]))) \
         == 539 / 36864 - 0.000000000000000005
-    assert Mval_chan(u, e, Predicate([1,2,1], Space("", [ap, bp, cp]))) \
+    assert Eval_chan(u, e, Predicate([1,2,1], Space("", [ap, bp, cp]))) \
         == 539 / 36864 - 0.000000000000000005
-    assert Mval_point_chan(u, e, Predicate([1,2,1], Space("", ['a', 'b', 'c']))) \
+    assert Eval_point_chan(u, e, Predicate([1,2,1], Space("", ['a', 'b', 'c']))) \
         == 539 / 36864 - 0.000000000000000005
     #
     # C-validity along e, in various ways
@@ -1161,40 +1161,40 @@ def test_learn_along_channel():
         == 3/512
     assert (u >= (e << ap) & (e << bp) ** 2 & (e << cp)) \
         == 3/512
-    assert Cval(u, Predicate([1,2,1], Space("", [e << ap, e << bp, e << cp]))) \
+    assert Ival(u, Predicate([1,2,1], Space("", [e << ap, e << bp, e << cp]))) \
         == 3/512
-    assert Cval_chan(u, e, Predicate([1,2,1], Space("", [ap, bp, cp]))) \
+    assert Ival_chan(u, e, Predicate([1,2,1], Space("", [ap, bp, cp]))) \
         == 3/512
-    assert Cval_point_chan(u, e, Predicate([1,2,1], Space("", ['a', 'b', 'c']))) \
+    assert Ival_point_chan(u, e, Predicate([1,2,1], Space("", ['a', 'b', 'c']))) \
         == 3/512
     #
     # M-learning along e
     #
     assert (1/4 * (u / (e << ap)) + 1/2 * (u / (e << bp)) + 1/4 * (u / (e << cp))) \
         == State([36/77, 41/77], X)
-    assert Mlrn(u, Predicate([1,2,1], Space("", [e << ap, e << bp, e << cp]))) \
+    assert Elrn(u, Predicate([1,2,1], Space("", [e << ap, e << bp, e << cp]))) \
         == State([36/77, 41/77], X)
-    Mu = Mlrn_chan(u, e, Predicate([1,2,1], Space("", [ap, bp, cp])))
+    Mu = Elrn_chan(u, e, Predicate([1,2,1], Space("", [ap, bp, cp])))
     assert Mu == State([36/77, 41/77], X)
     #
     # M-validity after M-learning along e
     #
-    assert Mval_chan(Mu, e, Predicate([1,2,1], Space("", [ap, bp, cp]))) \
+    assert Eval_chan(Mu, e, Predicate([1,2,1], Space("", [ap, bp, cp]))) \
         == 133476771 / 8999178496 + 0.000000000000000003
     #
     # C-learning along e
     #
     assert u / ((e << ap) & (e << bp) ** 2 & (e << cp)) \
         == State([0,1], X)
-    assert Clrn(u, Predicate([1,2,1], Space("", [e << ap, e << bp, e << cp]))) \
+    assert Ilrn(u, Predicate([1,2,1], Space("", [e << ap, e << bp, e << cp]))) \
         == State([0,1], X)
-    Cu = Clrn_chan(u, e, Predicate([1,2,1], Space("", [ap, bp, cp])))
-    assert Cu == State([0,1], X)
+    Iu = Ilrn_chan(u, e, Predicate([1,2,1], Space("", [ap, bp, cp])))
+    assert Iu == State([0,1], X)
     #
     # C-validity after C-learning along e
     #
-    assert (Cu >= ((e << ap) & (e << bp) ** 2 & (e << cp))) == 3/256
-    assert Cval_chan(Cu, e, Predicate([1,2,1], Space("", [ap, bp, cp]))) \
+    assert (Iu >= ((e << ap) & (e << bp) ** 2 & (e << cp))) == 3/256
+    assert Ival_chan(Iu, e, Predicate([1,2,1], Space("", [ap, bp, cp]))) \
         == 3/256 
 
 
@@ -1219,7 +1219,7 @@ def test_coursera():
     dd = d.dagger(data.flrn())
     post = d >> data.flrn()
     assert post == State([2/5, 3/5], X)
-    assert Mlrn_point_chan(prior, c, data) == State([2/5, 3/5], X)
+    assert Elrn_point_chan(prior, c, data) == State([2/5, 3/5], X)
     assert dd(0) == State([3/4, 1/4, 0], Y)
     assert dd(1) == State([0, 1/6, 5/6], Y)
     assert dd >> post == State([3/10, 1/5, 1/2], Y)
