@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from .helpers import (_prod, mask_sum, mask_restrict)
 
 # Number of decimals in printing
-float_format_spec = ".3g"
+float_format_spec = ".4g"
 
 def convex_sum(prob_item_list):
     """ Yields convex sum
@@ -153,7 +153,11 @@ class Space:
     def get_index(self, *args):
         # print( args )
         # for n, a in enumerate(args):
-        #     print(n, a, self._sp[n].list.index(a) )
+        #     print(n, a )
+        #     print( self._sp )
+        #     print( self._sp[n] )
+        #     print( self._sp[n].list )
+        #     print( self._sp[n].list.index(a) )
         return tuple(self._sp[n].list.index(a) for n, a
                      in enumerate(args))
 
@@ -837,9 +841,8 @@ class State(Channel):
         #print("Skips: ", skiplabels, labels)
         plt.subplots()
 #        plt.xticks(xs, labels, rotation=45)
-        #plt.bar(xs, ys, align="center", width = 1 / (0.12 * len(xs)))
-        plt.bar(xs, ys, align="center", width=1 / (0.7 * len(xs)))
-        #plt.bar(xs, ys, align="center", width = 1 / (0.12 * len(xs)))
+        plt.bar(xs, ys, align="center", width = 1 / (0.3 * len(xs)))
+        #plt.bar(xs, ys, align="center", width=1 / (0.7 * len(xs)))
         plt.draw()
         plt.pause(0.001)
         input("Press [enter] to continue.")

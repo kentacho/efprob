@@ -234,8 +234,22 @@ def all_sharp_predicates(sp):
     return [ Predicate(s, sp) for s in seqs ]
 
 
-def free_pred_ext(K):
-    """ free extension of predicate to multisets, of size K """
+def add_ext(K):
+    """ free additive extension of predicate to multisets, of size K """
+    def out_fun(pred):
+        sp = pred.sp
+        dom = multiset_space(K)(sp)
+        def out_fun(mult): 
+            s = 0
+            for indices in np.ndindex(sp.shape):
+                s += mult.array[indices] * pred(*sp.get(*indices))
+            return s
+        return pred_fromfun(out_fun, dom)
+    return out_fun
+
+
+def mult_ext(K):
+    """ free multiplicative extension of predicate to multisets, of size K """
     def out_fun(pred):
         sp = pred.sp
         dom = multiset_space(K)(sp)
@@ -413,7 +427,7 @@ def coefficient(multiset):
 
 
 def multiset_binom(m1, m2):
-    """ binomial for multisets, which is defined if m2 <= m1 """
+    """ binomial coefficient for multisets, which is defined if m2 <= m1 """
     if not is_natural_multiset(m1) or not is_natural_multiset(m2):
         raise Exception("Multiset binomial only works for natural multisets")
     if m1.sp != m2.sp:
@@ -422,6 +436,18 @@ def multiset_binom(m1, m2):
     for a in m1.sp.iter_all():
         result *= binom(m1(*a), m2(*a))
     return result
+
+
+def multiset_mulnom(multiset_list):
+    """ multinomial coefficient for multisets, which is defined if m2 <= m1 """
+    multiset_sum = functools.reduce(lambda m1,m2: m1+m2, multiset_list)
+    result = 1
+    for a in multiset_sum.sp.iter_all():
+        facts = [ math.factorial(m(*a)) for m in multiset_list ]
+        result *= math.factorial(multiset_sum(*a)) / \
+            functools.reduce(lambda x,y: x*y, facts)
+    return result
+
 
 
 def bibinom(n, K):
@@ -545,17 +571,27 @@ def multiset_space_below(mult):
 #########################################
 
 
+def flatten_tuple(s):
+    if not isinstance(s, tuple):
+        return [ s ]
+    else:
+        ls = [ ]
+        for b in s:
+            ls += flatten_tuple(b)
+        return ls
+
 def accumulate_fun(K):
     """ function K:nat -> Space -> Space**K -> Mlt 
     that accumulates list ls over sp into multiset over sp """
     def sp_fun(sp):
         tuple_len = len(sp)
-        def tuple_fun(t):
+        def tuple_fun(*t):
+            ft = flatten_tuple(tuple(*t))
             state = empty_state(sp)
             for i in range(K):
                 """ t is assumped to be a flat tuple, without inner brackets """
-                item = t[ i*tuple_len : (i+1)*tuple_len ]
-                state += point_state(item, sp)
+                item = ft[ i*tuple_len : (i+1)*tuple_len ]
+                state += point_state(tuple(item), sp)
             return state
         return tuple_fun
     return sp_fun
@@ -795,7 +831,7 @@ def polya(L,K):
         cod = multiset_space(K)(space)
         def chan_fun(urn):
             if not is_natural_multiset(urn):
-                raise Exception("Hypergeometric only works for natural multisets")
+                raise Exception("Polya only works for natural multisets")
             pairs = [ (multiset_bibinom(urn, *draw),
                        point_state(draw, cod))         
                       for draw in cod.iter_all() if urn.supports(*draw) ]
