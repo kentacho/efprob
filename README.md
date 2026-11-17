@@ -1,5 +1,9 @@
 # EfProb
 
+> [!IMPORTANT]
+> **This repository is archived and contains an old version of EfProb.**
+> Please visit https://effectus.pages.science.ru.nl/EfProb/ for the latest version.
+
 EfProb is a Python package for probability calculations. For more
 background information on channel-based probability, see the
 forthcoming book:
